@@ -367,7 +367,7 @@ const TextInputOutlined = ({
             labelLayoutMeasured={parentState.labelLayout.measured}
             labelLayoutWidth={parentState.labelLayout.width}
             {...labelProps}
-            labelBackground={LabelBackground}
+            // labelBackground={LabelBackground}
             maxFontSizeMultiplier={rest.maxFontSizeMultiplier}
           />
         ) : null}
@@ -400,12 +400,12 @@ const TextInputOutlined = ({
               textAlign: textAlign
                 ? textAlign
                 : I18nManager.getConstants().isRTL
-                ? 'right'
-                : 'left',
+                  ? 'right'
+                  : 'left',
               paddingHorizontal: INPUT_PADDING_HORIZONTAL,
               minWidth: Math.min(
                 parentState.labelTextLayout.width +
-                  2 * INPUT_PADDING_HORIZONTAL,
+                2 * INPUT_PADDING_HORIZONTAL,
                 MIN_WIDTH
               ),
             },
