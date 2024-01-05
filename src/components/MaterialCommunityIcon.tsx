@@ -1,32 +1,19 @@
 import * as React from 'react';
-import { StyleSheet, Text, Platform, ViewProps, Role } from 'react-native';
-
-import { black } from '../styles/themes/v2/colors';
+import { StyleSheet, Text, Platform, TextProps, ViewProps } from 'react-native';
 
 export type IconProps = {
   name: string;
-  color?: string;
+  color: string;
   size: number;
   direction: 'rtl' | 'ltr';
   allowFontScaling?: boolean;
-  testID?: string;
 };
 
-type AccessibilityProps =
-  | {
-      role?: Role;
-      focusable?: boolean;
-    }
-  | {
-      accessibilityElementsHidden?: boolean;
-      importantForAccessibility?: 'auto' | 'yes' | 'no' | 'no-hide-descendants';
-    };
-
 let MaterialCommunityIcons: React.ComponentType<
-  React.ComponentProps<
-    typeof import('react-native-vector-icons/MaterialCommunityIcons').default
-  > & {
+  TextProps & {
+    name: string;
     color: string;
+    size: number;
     pointerEvents?: ViewProps['pointerEvents'];
   }
 >;
@@ -52,7 +39,7 @@ try {
 
       console.warn(
         `Tried to use the icon '${name}' in a component from 'react-native-paper', but 'react-native-vector-icons/MaterialCommunityIcons' could not be loaded.`,
-        `To remove this warning, try installing 'react-native-vector-icons' or use another method to specify icon: https://callstack.github.io/react-native-paper/docs/guides/icons`
+        `To remove this warning, try installing 'react-native-vector-icons' or use another method to specify icon: https://callstack.github.io/react-native-paper/icons.html.`
       );
 
       isErrorLogged = true;
@@ -72,7 +59,7 @@ try {
   };
 }
 
-export const accessibilityProps: AccessibilityProps =
+export const accessibilityProps =
   Platform.OS === 'web'
     ? {
         role: 'img',
@@ -86,11 +73,10 @@ export const accessibilityProps: AccessibilityProps =
 
 const defaultIcon = ({
   name,
-  color = black,
+  color,
   size,
   direction,
   allowFontScaling,
-  testID,
 }: IconProps) => (
   <MaterialCommunityIcons
     allowFontScaling={allowFontScaling}
@@ -106,13 +92,11 @@ const defaultIcon = ({
     ]}
     pointerEvents="none"
     selectable={false}
-    testID={testID}
     {...accessibilityProps}
   />
 );
 
 const styles = StyleSheet.create({
-  // eslint-disable-next-line react-native/no-color-literals
   icon: {
     backgroundColor: 'transparent',
   },

@@ -1,34 +1,22 @@
 import React from 'react';
-import {
-  ColorValue,
-  GestureResponderEvent,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 
-import { getIconColor } from './utils';
-import { useInternalTheme } from '../../../core/theming';
-import type { $Omit, ThemeProp } from '../../../types';
+import IconButton from '../../IconButton';
+import type { $Omit } from '../../../../src/types';
 import type { IconSource } from '../../Icon';
-import IconButton from '../../IconButton/IconButton';
-import { ICON_SIZE } from '../constants';
-import { getConstants } from '../helpers';
 
 export type Props = $Omit<
   React.ComponentProps<typeof IconButton>,
-  'icon' | 'theme' | 'color' | 'iconColor'
+  'icon' | 'theme' | 'color'
 > & {
   /**
-   * @renamed Renamed from 'name' to 'icon` in v5.x
    * Icon to show.
    */
-  icon: IconSource;
+  name: IconSource;
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Whether the TextInput will focus after onPress.
    */
@@ -37,30 +25,26 @@ export type Props = $Omit<
    * Color of the icon or a function receiving a boolean indicating whether the TextInput is focused and returning the color.
    */
   color?: ((isTextInputFocused: boolean) => string | undefined) | string;
-  /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
   style?: StyleProp<ViewStyle>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme?: ReactNativePaper.Theme;
 };
+
+export const ICON_SIZE = 24;
+const ICON_OFFSET = 12;
 
 type StyleContextType = {
   style: StyleProp<ViewStyle>;
   isTextInputFocused: boolean;
   forceFocus: () => void;
-  testID: string;
-  disabled?: boolean;
 };
 
 const StyleContext = React.createContext<StyleContextType>({
   style: {},
   isTextInputFocused: false,
   forceFocus: () => {},
-  testID: '',
 });
 
 const IconAdornment: React.FunctionComponent<
@@ -69,33 +53,13 @@ const IconAdornment: React.FunctionComponent<
     icon: React.ReactNode;
     topPosition: number;
     side: 'left' | 'right';
-    theme?: ThemeProp;
-    disabled?: boolean;
   } & Omit<StyleContextType, 'style'>
-> = ({
-  icon,
-  topPosition,
-  side,
-  isTextInputFocused,
-  forceFocus,
-  testID,
-  theme: themeOverrides,
-  disabled,
-}) => {
-  const { isV3 } = useInternalTheme(themeOverrides);
-  const { ICON_OFFSET } = getConstants(isV3);
-
+> = ({ icon, topPosition, side, isTextInputFocused, forceFocus }) => {
   const style = {
     top: topPosition,
     [side]: ICON_OFFSET,
   };
-  const contextState = {
-    style,
-    isTextInputFocused,
-    forceFocus,
-    testID,
-    disabled,
-  };
+  const contextState = { style, isTextInputFocused, forceFocus };
 
   return (
     <StyleContext.Provider value={contextState}>{icon}</StyleContext.Provider>
@@ -104,6 +68,12 @@ const IconAdornment: React.FunctionComponent<
 
 /**
  * A component to render a leading / trailing icon in the TextInput
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/textinput-flat.icon.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -117,7 +87,7 @@ const IconAdornment: React.FunctionComponent<
  *     <TextInput
  *       label="Password"
  *       secureTextEntry
- *       right={<TextInput.Icon icon="eye" />}
+ *       right={<TextInput.Icon name="eye" />}
  *     />
  *   );
  * };
@@ -127,48 +97,30 @@ const IconAdornment: React.FunctionComponent<
  */
 
 const TextInputIcon = ({
-  icon,
+  name,
   onPress,
   forceTextInputFocus,
-  color: customColor,
-  theme: themeOverrides,
-  rippleColor,
+  color,
   ...rest
 }: Props) => {
-  const { style, isTextInputFocused, forceFocus, testID, disabled } =
+  const { style, isTextInputFocused, forceFocus } =
     React.useContext(StyleContext);
 
-  const onPressWithFocusControl = React.useCallback(
-    (e: GestureResponderEvent) => {
-      if (forceTextInputFocus && !isTextInputFocused) {
-        forceFocus();
-      }
-
-      onPress?.(e);
-    },
-    [forceTextInputFocus, forceFocus, isTextInputFocused, onPress]
-  );
-
-  const theme = useInternalTheme(themeOverrides);
-
-  const iconColor = getIconColor({
-    theme,
-    disabled,
-    isTextInputFocused,
-    customColor,
-  });
+  const onPressWithFocusControl = React.useCallback(() => {
+    if (forceTextInputFocus && !isTextInputFocused) {
+      forceFocus();
+    }
+    onPress?.();
+  }, [forceTextInputFocus, forceFocus, isTextInputFocused, onPress]);
 
   return (
     <View style={[styles.container, style]}>
       <IconButton
-        icon={icon}
+        icon={name}
         style={styles.iconButton}
         size={ICON_SIZE}
         onPress={onPressWithFocusControl}
-        iconColor={iconColor}
-        testID={testID}
-        theme={themeOverrides}
-        rippleColor={rippleColor}
+        color={typeof color === 'function' ? color(isTextInputFocused) : color}
         {...rest}
       />
     </View>

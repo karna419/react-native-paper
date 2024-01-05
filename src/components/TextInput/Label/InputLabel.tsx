@@ -1,29 +1,16 @@
 import React from 'react';
-import {
-  Animated,
-  ColorValue,
-  Platform,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
-
+import { Animated, StyleSheet } from 'react-native';
 import AnimatedText from '../../Typography/AnimatedText';
-import { getConstants } from '../helpers';
+
 import type { InputLabelProps } from '../types';
 
 const InputLabel = (props: InputLabelProps) => {
+  const { parentState, labelBackground } = props;
+
   const {
-    labeled,
-    wiggle,
-    error,
-    focused,
-    opacity,
-    labelLayoutWidth,
-    labelBackground,
     label,
-    labelError,
+    error,
     onLayoutAnimatedText,
-    onLabelTextLayout,
     hasActiveOutline,
     activeColor,
     placeholderStyle,
@@ -31,36 +18,23 @@ const InputLabel = (props: InputLabelProps) => {
     baseLabelTranslateY,
     font,
     fontSize,
-    lineHeight,
     fontWeight,
     placeholderOpacity,
     wiggleOffsetX,
     labelScale,
     topPosition,
-    paddingLeft,
-    paddingRight,
-    backgroundColor,
-    roundness,
+    paddingOffset,
     placeholderColor,
     errorColor,
     labelTranslationXOffset,
     maxFontSizeMultiplier,
-    testID,
-    isV3,
-    inputContainerLayout,
-  } = props;
-
-  const { INPUT_PADDING_HORIZONTAL } = getConstants(isV3);
-  const { width } = useWindowDimensions();
-
-  const paddingOffset =
-    paddingLeft && paddingRight ? { paddingLeft, paddingRight } : {};
+  } = props.labelProps;
 
   const labelTranslationX = {
     transform: [
       {
         // Offset label scale since RN doesn't support transform origin
-        translateX: labeled.interpolate({
+        translateX: parentState.labeled.interpolate({
           inputRange: [0, 1],
           outputRange: [baseLabelTranslateX, labelTranslationXOffset || 0],
         }),
@@ -71,60 +45,33 @@ const InputLabel = (props: InputLabelProps) => {
   const labelStyle = {
     ...font,
     fontSize,
-    lineHeight,
     fontWeight,
-    opacity: labeled.interpolate({
-      inputRange: [0, 1],
-      outputRange: [hasActiveOutline ? 1 : 0, 0],
-    }),
     transform: [
       {
         // Wiggle the label when there's an error
-        translateX: wiggle
-          ? error.interpolate({
-              inputRange: [0, 0.5, 1],
-              outputRange: [0, wiggleOffsetX, 0],
-            })
-          : 0,
+        translateX: parentState.error.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, parentState.value && error ? wiggleOffsetX : 0, 0],
+        }),
       },
       {
         // Move label to top
-        translateY:
-          baseLabelTranslateY !== 0
-            ? labeled.interpolate({
-                inputRange: [0, 1],
-                outputRange: [baseLabelTranslateY, 0],
-              })
-            : 0,
+        translateY: parentState.labeled.interpolate({
+          inputRange: [0, 1],
+          outputRange: [baseLabelTranslateY, 0],
+        }),
       },
       {
         // Make label smaller
-        scale:
-          labelScale !== 0
-            ? labeled.interpolate({
-                inputRange: [0, 1],
-                outputRange: [labelScale, 1],
-              })
-            : labeled,
+        scale: parentState.labeled.interpolate({
+          inputRange: [0, 1],
+          outputRange: [labelScale, 1],
+        }),
       },
     ],
   };
 
-  const commonStyles = [
-    placeholderStyle,
-    {
-      top: topPosition,
-      maxWidth: inputContainerLayout.width + INPUT_PADDING_HORIZONTAL / 2,
-    },
-    labelStyle,
-    paddingOffset || {},
-  ];
-
-  const textColor = (
-    labelError && errorColor ? errorColor : placeholderColor
-  ) as ColorValue;
-
-  return (
+  return label ? (
     // Position colored placeholder and gray placeholder on top of each other and crossfade them
     // This gives the effect of animating the color, but allows us to use native driver
     <Animated.View
@@ -132,57 +79,66 @@ const InputLabel = (props: InputLabelProps) => {
       style={[
         StyleSheet.absoluteFill,
         styles.labelContainer,
-        Platform.OS !== 'web' && { width },
-        { opacity },
+        {
+          opacity:
+            // Hide the label in minimized state until we measure it's width
+            parentState.value || parentState.focused
+              ? parentState.labelLayout.measured
+                ? 1
+                : 0
+              : 1,
+        },
         labelTranslationX,
       ]}
     >
       {labelBackground?.({
-        labeled,
-        labelLayoutWidth,
+        parentState,
         labelStyle,
-        placeholderStyle,
-        baseLabelTranslateX,
-        topPosition,
-        label,
-        backgroundColor,
-        roundness,
+        labelProps: props.labelProps,
         maxFontSizeMultiplier: maxFontSizeMultiplier,
-        testID,
       })}
       <AnimatedText
-        variant="bodySmall"
         onLayout={onLayoutAnimatedText}
-        onTextLayout={onLabelTextLayout}
         style={[
-          commonStyles,
+          placeholderStyle,
+          {
+            top: topPosition,
+          },
+          labelStyle,
+          paddingOffset || {},
           {
             color: activeColor,
+            opacity: parentState.labeled.interpolate({
+              inputRange: [0, 1],
+              outputRange: [hasActiveOutline ? 1 : 0, 0],
+            }),
           },
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        testID={`${testID}-label-active`}
       >
         {label}
       </AnimatedText>
       <AnimatedText
-        variant={focused ? 'bodyLarge' : 'bodySmall'}
         style={[
-          commonStyles,
+          placeholderStyle,
           {
-            color: textColor,
+            top: topPosition,
+          },
+          labelStyle,
+          paddingOffset,
+          {
+            color: error && errorColor ? errorColor : placeholderColor,
             opacity: placeholderOpacity,
           },
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        testID={`${testID}-label-inactive`}
       >
         {label}
       </AnimatedText>
     </Animated.View>
-  );
+  ) : null;
 };
 
 const styles = StyleSheet.create({
@@ -191,4 +147,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(InputLabel);
+export default InputLabel;

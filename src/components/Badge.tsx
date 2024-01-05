@@ -1,15 +1,13 @@
 import * as React from 'react';
 import {
   Animated,
-  StyleProp,
   StyleSheet,
+  StyleProp,
   TextStyle,
   useWindowDimensions,
 } from 'react-native';
-
-import { useInternalTheme } from '../core/theming';
-import { black, white } from '../styles/themes/v2/colors';
-import type { ThemeProp } from '../types';
+import { white, black } from '../styles/colors';
+import { withTheme } from '../core/theming';
 import getContrastingColor from '../utils/getContrastingColor';
 
 const defaultSize = 20;
@@ -32,12 +30,23 @@ export type Props = React.ComponentProps<typeof Animated.Text> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * Badges are small status descriptors for UI elements.
  * A badge consists of a small circle, typically containing a number or other short set of characters, that appears in proximity to another object.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="small" src="screenshots/badge-1.png" />
+ *     <figcaption>Badge with content</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img class="small" src="screenshots/badge-2.png" />
+ *     <figcaption>Badge without content</figcaption>
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -55,11 +64,10 @@ const Badge = ({
   children,
   size = defaultSize,
   style,
-  theme: themeOverrides,
+  theme,
   visible = true,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const { current: opacity } = React.useRef<Animated.Value>(
     new Animated.Value(visible ? 1 : 0)
   );
@@ -85,20 +93,12 @@ const Badge = ({
     }).start();
   }, [visible, opacity, scale]);
 
-  const {
-    backgroundColor = theme.isV3
-      ? theme.colors.error
-      : theme.colors?.notification,
-    ...restStyle
-  } = (StyleSheet.flatten(style) || {}) as TextStyle;
+  const { backgroundColor = theme.colors.notification, ...restStyle } =
+    (StyleSheet.flatten(style) || {}) as TextStyle;
 
-  const textColor = theme.isV3
-    ? theme.colors.onError
-    : getContrastingColor(backgroundColor, white, black);
+  const textColor = getContrastingColor(backgroundColor, white, black);
 
   const borderRadius = size / 2;
-
-  const paddingHorizontal = theme.isV3 ? 3 : 4;
 
   return (
     <Animated.Text
@@ -109,12 +109,11 @@ const Badge = ({
           backgroundColor,
           color: textColor,
           fontSize: size * 0.5,
-          ...(!theme.isV3 && theme.fonts.regular),
+          ...theme.fonts.regular,
           lineHeight: size / fontScale,
           height: size,
           minWidth: size,
           borderRadius,
-          paddingHorizontal,
         },
         styles.container,
         restStyle,
@@ -126,13 +125,14 @@ const Badge = ({
   );
 };
 
-export default Badge;
+export default withTheme(Badge);
 
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-end',
     textAlign: 'center',
     textAlignVertical: 'center',
+    paddingHorizontal: 4,
     overflow: 'hidden',
   },
 });

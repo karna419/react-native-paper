@@ -1,16 +1,10 @@
 import * as React from 'react';
-import {
-  Animated,
-  GestureResponderEvent,
-  StyleSheet,
-  View,
-} from 'react-native';
-
-import { getAndroidSelectionControlColor } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { $RemoveChildren, ThemeProp } from '../../types';
+import { Animated, View, StyleSheet } from 'react-native';
+import color from 'color';
 import MaterialCommunityIcon from '../MaterialCommunityIcon';
 import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import { withTheme } from '../../core/theming';
+import type { $RemoveChildren } from '../../types';
 
 export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
@@ -24,7 +18,7 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Custom color for unchecked checkbox.
    */
@@ -36,7 +30,7 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -50,16 +44,26 @@ const ANIMATION_DURATION = 100;
  * Checkboxes allow the selection of multiple options from a set.
  * This component follows platform guidelines for Android, but can be used
  * on any platform.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img src="screenshots/checkbox-enabled.android.png" />
+ *     <figcaption>Enabled</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/checkbox-disabled.android.png" />
+ *     <figcaption>Disabled</figcaption>
+ *   </figure>
+ * </div>
  */
 const CheckboxAndroid = ({
   status,
-  theme: themeOverrides,
+  theme,
   disabled,
   onPress,
   testID,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const { current: scaleAnim } = React.useRef<Animated.Value>(
     new Animated.Value(1)
   );
@@ -96,15 +100,23 @@ const CheckboxAndroid = ({
 
   const checked = status === 'checked';
   const indeterminate = status === 'indeterminate';
+  const checkedColor = rest.color || theme.colors.accent;
+  const uncheckedColor =
+    rest.uncheckedColor ||
+    color(theme.colors.text)
+      .alpha(theme.dark ? 0.7 : 0.54)
+      .rgb()
+      .string();
 
-  const { rippleColor, selectionControlColor } =
-    getAndroidSelectionControlColor({
-      theme,
-      disabled,
-      checked,
-      customColor: rest.color,
-      customUncheckedColor: rest.uncheckedColor,
-    });
+  let rippleColor, checkboxColor;
+
+  if (disabled) {
+    rippleColor = color(theme.colors.text).alpha(0.16).rgb().string();
+    checkboxColor = theme.colors.disabled;
+  } else {
+    rippleColor = color(checkedColor).fade(0.32).rgb().string();
+    checkboxColor = checked ? checkedColor : uncheckedColor;
+  }
 
   const borderWidth = scaleAnim.interpolate({
     inputRange: [0.8, 1],
@@ -124,26 +136,28 @@ const CheckboxAndroid = ({
       rippleColor={rippleColor}
       onPress={onPress}
       disabled={disabled}
+      // @ts-expect-error We keep old a11y props for backwards compat with old RN versions
+      accessibilityTraits={disabled ? ['button', 'disabled'] : 'button'}
+      accessibilityComponentType="button"
       accessibilityRole="checkbox"
       accessibilityState={{ disabled, checked }}
       accessibilityLiveRegion="polite"
       style={styles.container}
       testID={testID}
-      theme={theme}
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <MaterialCommunityIcon
           allowFontScaling={false}
           name={icon}
           size={24}
-          color={selectionControlColor}
+          color={checkboxColor}
           direction="ltr"
         />
         <View style={[StyleSheet.absoluteFill, styles.fillContainer]}>
           <Animated.View
             style={[
               styles.fill,
-              { borderColor: selectionControlColor },
+              { borderColor: checkboxColor },
               { borderWidth },
             ]}
           />
@@ -172,7 +186,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CheckboxAndroid;
+export default withTheme(CheckboxAndroid);
 
 // @component-docs ignore-next-line
-export { CheckboxAndroid };
+const CheckboxAndroidWithTheme = withTheme(CheckboxAndroid);
+// @component-docs ignore-next-line
+export { CheckboxAndroidWithTheme as CheckboxAndroid };

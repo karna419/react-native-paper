@@ -1,28 +1,19 @@
 import * as React from 'react';
 import {
   Animated,
-  ColorValue,
-  Easing,
-  I18nManager,
+  SafeAreaView,
   StyleProp,
   StyleSheet,
-  View,
   ViewStyle,
+  View,
 } from 'react-native';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useLatestCallback from 'use-latest-callback';
-
-import Button from './Button/Button';
-import type { IconSource } from './Icon';
-import IconButton from './IconButton/IconButton';
-import MaterialCommunityIcon from './MaterialCommunityIcon';
+import Button from './Button';
 import Surface from './Surface';
 import Text from './Typography/Text';
-import { useInternalTheme } from '../core/theming';
-import type { $Omit, $RemoveChildren, ThemeProp } from '../types';
+import { withTheme } from '../core/theming';
 
-export type Props = $Omit<React.ComponentProps<typeof Surface>, 'mode'> & {
+export type Props = React.ComponentProps<typeof Surface> & {
   /**
    * Whether the Snackbar is currently visible.
    */
@@ -32,29 +23,9 @@ export type Props = $Omit<React.ComponentProps<typeof Surface>, 'mode'> & {
    * - `label` - Label of the action button
    * - `onPress` - Callback that is called when action button is pressed.
    */
-  action?: $RemoveChildren<typeof Button> & {
+  action?: Omit<React.ComponentProps<typeof Button>, 'children'> & {
     label: string;
   };
-  /**
-   * @supported Available in v5.x with theme version 3
-   * Icon to display when `onIconPress` is defined. Default will be `close` icon.
-   */
-  icon?: IconSource;
-  /**
-   * @supported Available in v5.x with theme version 3
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
-  /**
-   * @supported Available in v5.x with theme version 3
-   * Function to execute on icon button press. The icon button appears only when this prop is specified.
-   */
-  onIconPress?: () => void;
-  /**
-   * @supported Available in v5.x with theme version 3
-   * Accessibility label for the icon button. This is read by the screen reader when the user taps the button.
-   */
-  iconAccessibilityLabel?: string;
   /**
    * The duration for which the Snackbar is shown.
    */
@@ -68,28 +39,15 @@ export type Props = $Omit<React.ComponentProps<typeof Surface>, 'mode'> & {
    */
   children: React.ReactNode;
   /**
-   * @supported Available in v5.x with theme version 3
-   * Changes Snackbar shadow and background on iOS and Android.
-   */
-  elevation?: 0 | 1 | 2 | 3 | 4 | 5 | Animated.Value;
-  /**
-   * Specifies the largest possible scale a text font can reach.
-   */
-  maxFontSizeMultiplier?: number;
-  /**
    * Style for the wrapper of the snackbar
    */
   wrapperStyle?: StyleProp<ViewStyle>;
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  style?: StyleProp<ViewStyle>;
   ref?: React.RefObject<View>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  /**
-   * TestID used for testing purposes
-   */
-  testID?: string;
+  theme: ReactNativePaper.Theme;
 };
 
 const DURATION_SHORT = 4000;
@@ -97,9 +55,11 @@ const DURATION_MEDIUM = 7000;
 const DURATION_LONG = 10000;
 
 /**
- * Snackbars provide brief feedback about an operation through a message rendered at the bottom of the container in which it's wrapped.
- *
- * Note: To display it as a popup, regardless of the parent's position, wrap it with a `Portal` component – refer to the example in the "More Examples` section.
+ * Snackbars provide brief feedback about an operation through a message at the bottom of the screen.
+ * Snackbar by default uses `onSurface` color from theme.
+ * <div class="screenshots">
+ *   <img class="medium" src="screenshots/snackbar.gif" />
+ * </div>
  *
  * ## Usage
  * ```js
@@ -145,74 +105,22 @@ const DURATION_LONG = 10000;
 const Snackbar = ({
   visible,
   action,
-  icon,
-  onIconPress,
-  iconAccessibilityLabel = 'Close icon',
   duration = DURATION_MEDIUM,
   onDismiss,
   children,
-  elevation = 2,
   wrapperStyle,
   style,
-  theme: themeOverrides,
-  maxFontSizeMultiplier,
-  rippleColor,
-  testID,
+  theme,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { bottom, right, left } = useSafeAreaInsets();
-
   const { current: opacity } = React.useRef<Animated.Value>(
     new Animated.Value(0.0)
   );
+  const [hidden, setHidden] = React.useState<boolean>(!visible);
+
   const hideTimeout = React.useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const [hidden, setHidden] = React.useState(!visible);
-
   const { scale } = theme.animation;
-
-  const handleOnVisible = useLatestCallback(() => {
-    // show
-    if (hideTimeout.current) clearTimeout(hideTimeout.current);
-    setHidden(false);
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 200 * scale,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        const isInfinity =
-          duration === Number.POSITIVE_INFINITY ||
-          duration === Number.NEGATIVE_INFINITY;
-
-        if (!isInfinity) {
-          hideTimeout.current = setTimeout(
-            onDismiss,
-            duration
-          ) as unknown as NodeJS.Timeout;
-        }
-      }
-    });
-  });
-
-  const handleOnHidden = useLatestCallback(() => {
-    // hide
-    if (hideTimeout.current) {
-      clearTimeout(hideTimeout.current);
-    }
-
-    Animated.timing(opacity, {
-      toValue: 0,
-      duration: 100 * scale,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        setHidden(true);
-      }
-    });
-  });
 
   React.useEffect(() => {
     return () => {
@@ -222,145 +130,108 @@ const Snackbar = ({
 
   React.useLayoutEffect(() => {
     if (visible) {
-      handleOnVisible();
+      // show
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+      setHidden(false);
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200 * scale,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          const isInfinity =
+            duration === Number.POSITIVE_INFINITY ||
+            duration === Number.NEGATIVE_INFINITY;
+
+          if (finished && !isInfinity) {
+            hideTimeout.current = setTimeout(
+              onDismiss,
+              duration
+            ) as unknown as NodeJS.Timeout;
+          }
+        }
+      });
     } else {
-      handleOnHidden();
+      // hide
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 100 * scale,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setHidden(true);
+      });
     }
-  }, [visible, handleOnVisible, handleOnHidden]);
+  }, [visible, duration, opacity, scale, onDismiss]);
 
-  const { colors, roundness, isV3 } = theme;
+  const { colors, roundness } = theme;
 
-  if (hidden) {
-    return null;
-  }
+  if (hidden) return null;
 
   const {
     style: actionStyle,
     label: actionLabel,
     onPress: onPressAction,
-    rippleColor: actionRippleColor,
     ...actionProps
   } = action || {};
 
-  const buttonTextColor = isV3 ? colors.inversePrimary : colors.accent;
-  const textColor = isV3 ? colors.inverseOnSurface : colors?.surface;
-  const backgroundColor = isV3 ? colors.inverseSurface : colors?.onSurface;
-
-  const isIconButton = isV3 && onIconPress;
-
-  const marginLeft = action ? -12 : -16;
-
-  const wrapperPaddings = {
-    paddingBottom: bottom,
-    paddingHorizontal: Math.max(left, right),
-  };
-
-  const renderChildrenWithWrapper = () => {
-    if (typeof children === 'string') {
-      return (
-        <Text
-          variant="bodyMedium"
-          style={[styles.content, { color: textColor }]}
-          maxFontSizeMultiplier={maxFontSizeMultiplier}
-        >
-          {children}
-        </Text>
-      );
-    }
-
-    return (
-      <View style={styles.content}>
-        {/* View is added to allow multiple lines support for Text component as children */}
-        <View>{children}</View>
-      </View>
-    );
-  };
-
   return (
-    <View
+    <SafeAreaView
       pointerEvents="box-none"
-      style={[styles.wrapper, wrapperPaddings, wrapperStyle]}
+      style={[styles.wrapper, wrapperStyle]}
     >
       <Surface
         pointerEvents="box-none"
         accessibilityLiveRegion="polite"
-        theme={theme}
-        style={[
-          !isV3 && styles.elevation,
-          styles.container,
-          {
-            backgroundColor,
-            borderRadius: roundness,
-            opacity: opacity,
-            transform: [
-              {
-                scale: visible
-                  ? opacity.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.9, 1],
-                    })
-                  : 1,
-              },
-            ],
-          },
-          style,
-        ]}
-        testID={testID}
-        {...(isV3 && { elevation })}
+        style={
+          [
+            styles.container,
+            {
+              borderRadius: roundness,
+              opacity: opacity,
+              transform: [
+                {
+                  scale: visible
+                    ? opacity.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.9, 1],
+                      })
+                    : 1,
+                },
+              ],
+            },
+            { backgroundColor: colors.onSurface },
+            style,
+          ] as StyleProp<ViewStyle>
+        }
         {...rest}
       >
-        {renderChildrenWithWrapper()}
-        {(action || isIconButton) && (
-          <View style={[styles.actionsContainer, { marginLeft }]}>
-            {action ? (
-              <Button
-                onPress={(event) => {
-                  onPressAction?.(event);
-                  onDismiss();
-                }}
-                style={[styles.button, actionStyle]}
-                textColor={buttonTextColor}
-                compact={!isV3}
-                mode="text"
-                theme={theme}
-                rippleColor={actionRippleColor}
-                {...actionProps}
-              >
-                {actionLabel}
-              </Button>
-            ) : null}
-            {isIconButton ? (
-              <IconButton
-                accessibilityRole="button"
-                borderless
-                onPress={onIconPress}
-                iconColor={theme.colors.inverseOnSurface}
-                rippleColor={rippleColor}
-                theme={theme}
-                icon={
-                  icon ||
-                  (({ size, color }) => {
-                    return (
-                      <MaterialCommunityIcon
-                        name="close"
-                        color={color}
-                        size={size}
-                        direction={
-                          I18nManager.getConstants().isRTL ? 'rtl' : 'ltr'
-                        }
-                      />
-                    );
-                  })
-                }
-                accessibilityLabel={iconAccessibilityLabel}
-                style={styles.icon}
-                testID={`${testID}-icon`}
-              />
-            ) : null}
-          </View>
-        )}
+        <Text
+          style={[
+            styles.content,
+            { marginRight: action ? 0 : 16, color: colors.surface },
+          ]}
+        >
+          {children}
+        </Text>
+        {action ? (
+          <Button
+            onPress={() => {
+              onPressAction?.();
+              onDismiss();
+            }}
+            style={[styles.button, actionStyle]}
+            color={colors.accent}
+            compact
+            mode="text"
+            {...actionProps}
+          >
+            {actionLabel}
+          </Button>
+        ) : null}
       </Surface>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -386,35 +257,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   container: {
+    elevation: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     margin: 8,
     borderRadius: 4,
-    minHeight: 48,
   },
   content: {
-    marginHorizontal: 16,
+    marginLeft: 16,
     marginVertical: 14,
+    flexWrap: 'wrap',
     flex: 1,
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    minHeight: 48,
-  },
   button: {
-    marginRight: 8,
-    marginLeft: 4,
-  },
-  elevation: {
-    elevation: 6,
-  },
-  icon: {
-    width: 40,
-    height: 40,
-    margin: 0,
+    marginHorizontal: 8,
+    marginVertical: 6,
   },
 });
 
-export default Snackbar;
+export default withTheme(Snackbar);

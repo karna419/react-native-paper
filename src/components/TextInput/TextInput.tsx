@@ -1,28 +1,21 @@
 import * as React from 'react';
 import {
   Animated,
+  TextInput as NativeTextInput,
   LayoutChangeEvent,
   StyleProp,
-  TextInput as NativeTextInput,
   TextStyle,
-  ViewStyle,
-  NativeSyntheticEvent,
-  TextLayoutEventData,
 } from 'react-native';
-
-import TextInputAffix, {
-  Props as TextInputAffixProps,
-} from './Adornment/TextInputAffix';
+import TextInputOutlined from './TextInputOutlined';
+import TextInputFlat from './TextInputFlat';
 import TextInputIcon, {
   Props as TextInputIconProps,
 } from './Adornment/TextInputIcon';
-import TextInputFlat from './TextInputFlat';
-import TextInputOutlined from './TextInputOutlined';
+import TextInputAffix, {
+  Props as TextInputAffixProps,
+} from './Adornment/TextInputAffix';
+import { withTheme } from '../../core/theming';
 import type { RenderProps, TextInputLabelProp } from './types';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
-import { forwardRef } from '../../utils/forwardRef';
-import { roundLayoutSize } from '../../utils/roundLayoutSize';
 
 const BLUR_ANIMATION_DURATION = 180;
 const FOCUS_ANIMATION_DURATION = 150;
@@ -33,7 +26,7 @@ export type Props = React.ComponentPropsWithRef<typeof NativeTextInput> & {
    * - `flat` - flat input with an underline.
    * - `outlined` - input with an outline.
    *
-   * In `outlined` mode, the background color of the label is derived from `colors?.background` in theme or the `backgroundColor` style.
+   * In `outlined` mode, the background color of the label is derived from `colors.background` in theme or the `backgroundColor` style.
    * This component render TextInputOutlined or TextInputFlat based on that props
    */
   mode?: 'flat' | 'outlined';
@@ -60,16 +53,9 @@ export type Props = React.ComponentPropsWithRef<typeof NativeTextInput> & {
    */
   onChangeText?: Function;
   /**
-   * Selection color of the input. On iOS, it sets both the selection color and cursor color.
-   * On Android, it sets only the selection color.
+   * Selection color of the input
    */
   selectionColor?: string;
-  /**
-   * @platform Android only
-   * Cursor (or "caret") color of the input on Android.
-   * This property has no effect on iOS.
-   */
-  cursorColor?: string;
   /**
    * Inactive underline color of the input.
    */
@@ -87,10 +73,6 @@ export type Props = React.ComponentPropsWithRef<typeof NativeTextInput> & {
    */
   activeOutlineColor?: string;
   /**
-   * Color of the text in the input.
-   */
-  textColor?: string;
-  /**
    * Sets min height with densed layout. For `TextInput` in `flat` mode
    * height is `64dp` or in dense layout - `52dp` with label or `40dp` without label.
    * For `TextInput` in `outlined` mode
@@ -103,7 +85,6 @@ export type Props = React.ComponentPropsWithRef<typeof NativeTextInput> & {
    */
   multiline?: boolean;
   /**
-   * @platform Android only
    * The number of lines to show in the input (Android only).
    */
   numberOfLines?: number;
@@ -149,29 +130,7 @@ export type Props = React.ComponentPropsWithRef<typeof NativeTextInput> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  /**
-   * testID to be used on tests.
-   */
-  testID?: string;
-  /**
-   * Pass custom style directly to the input itself.
-   * Overrides input style
-   * Example: `paddingLeft`, `backgroundColor`
-   */
-  contentStyle?: StyleProp<TextStyle>;
-  /**
-   * Pass style to override the default style of outlined wrapper.
-   * Overrides style when mode is set to `outlined`
-   * Example: `borderRadius`, `borderColor`
-   */
-  outlineStyle?: StyleProp<ViewStyle>;
-  /**
-   * Pass style to override the default style of underlined wrapper.
-   * Overrides style when mode is set to `flat`
-   * Example: `borderRadius`, `borderColor`
-   */
-  underlineStyle?: StyleProp<ViewStyle>;
+  theme: ReactNativePaper.Theme;
 };
 
 interface CompoundedComponent
@@ -187,10 +146,27 @@ type TextInputHandles = Pick<
   'focus' | 'clear' | 'blur' | 'isFocused' | 'setNativeProps'
 >;
 
-const DefaultRenderer = (props: RenderProps) => <NativeTextInput {...props} />;
-
 /**
  * A component to allow users to input text.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/textinput-flat.focused.png" />
+ *     <figcaption>Flat (focused)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img class="medium" src="screenshots/textinput-flat.disabled.png" />
+ *     <figcaption>Flat (disabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img class="medium" src="screenshots/textinput-outlined.focused.png" />
+ *     <figcaption>Outlined (focused)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img class="medium" src="screenshots/textinput-outlined.disabled.png" />
+ *     <figcaption>Outlined (disabled)</figcaption>
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -214,7 +190,8 @@ const DefaultRenderer = (props: RenderProps) => <NativeTextInput {...props} />;
  *
  * @extends TextInput props https://reactnative.dev/docs/textinput#props
  */
-const TextInput = forwardRef<TextInputHandles, Props>(
+
+const TextInput = React.forwardRef<TextInputHandles, Props>(
   (
     {
       mode = 'flat',
@@ -223,14 +200,11 @@ const TextInput = forwardRef<TextInputHandles, Props>(
       error: errorProp = false,
       multiline = false,
       editable = true,
-      contentStyle,
-      render = DefaultRenderer,
-      theme: themeOverrides,
+      render = (props: RenderProps) => <NativeTextInput {...props} />,
       ...rest
     }: Props,
     ref
   ) => {
-    const theme = useInternalTheme(themeOverrides);
     const isControlled = rest.value !== undefined;
     const validInputValue = isControlled ? rest.value : rest.defaultValue;
 
@@ -249,14 +223,6 @@ const TextInput = forwardRef<TextInputHandles, Props>(
     >(validInputValue);
     // Use value from props instead of local state when input is controlled
     const value = isControlled ? rest.value : uncontrolledValue;
-
-    const [labelTextLayout, setLabelTextLayout] = React.useState({
-      width: 33,
-    });
-
-    const [inputContainerLayout, setInputContainerLayout] = React.useState({
-      width: 65,
-    });
 
     const [labelLayout, setLabelLayout] = React.useState<{
       measured: boolean;
@@ -286,7 +252,7 @@ const TextInput = forwardRef<TextInputHandles, Props>(
 
     const root = React.useRef<NativeTextInput | undefined | null>();
 
-    const { scale } = theme.animation;
+    const { scale } = rest.theme.animation;
 
     React.useImperativeHandle(ref, () => ({
       focus: () => root.current?.focus(),
@@ -325,16 +291,12 @@ const TextInput = forwardRef<TextInputHandles, Props>(
       // We don't show placeholder if there's a label because the label acts as placeholder
       // When focused, the label moves up, so we can show a placeholder
       if (focused || !rest.label) {
-        // If the user wants to use the contextMenu, when changing the placeholder, the contextMenu is closed
-        // This is a workaround to mitigate this behavior in scenarios where the placeholder is not specified.
-        if (rest.placeholder) {
-          // Set the placeholder in a delay to offset the label animation
-          // If we show it immediately, they'll overlap and look ugly
-          timer.current = setTimeout(
-            () => setPlaceholder(rest.placeholder),
-            50
-          ) as unknown as NodeJS.Timeout;
-        }
+        // Set the placeholder in a delay to offset the label animation
+        // If we show it immediately, they'll overlap and look ugly
+        timer.current = setTimeout(
+          () => setPlaceholder(rest.placeholder),
+          50
+        ) as unknown as NodeJS.Timeout;
       } else {
         // hidePlaceholder
 
@@ -356,7 +318,6 @@ const TextInput = forwardRef<TextInputHandles, Props>(
     }, [focused, rest.label, rest.placeholder]);
 
     React.useEffect(() => {
-      labeled.stopAnimation();
       // The label should be minimized if the text input is focused, or has text
       // In minimized mode, the label moves up and becomes small
       // workaround for animated regression for react native > 0.61
@@ -371,44 +332,30 @@ const TextInput = forwardRef<TextInputHandles, Props>(
         }).start();
       } else {
         // restore label
-        Animated.timing(labeled, {
-          toValue: 1,
-          duration: FOCUS_ANIMATION_DURATION * scale,
-          // To prevent this - https://github.com/callstack/react-native-paper/issues/941
-          useNativeDriver: true,
-        }).start();
+        {
+          Animated.timing(labeled, {
+            toValue: 1,
+            duration: FOCUS_ANIMATION_DURATION * scale,
+            // To prevent this - https://github.com/callstack/react-native-paper/issues/941
+            useNativeDriver: true,
+          }).start();
+        }
       }
     }, [focused, value, labeled, scale]);
 
-    const onLeftAffixLayoutChange = React.useCallback(
-      (event: LayoutChangeEvent) => {
-        const height = roundLayoutSize(event.nativeEvent.layout.height);
-        const width = roundLayoutSize(event.nativeEvent.layout.width);
+    const onLeftAffixLayoutChange = (event: LayoutChangeEvent) => {
+      setLeftLayout({
+        height: event.nativeEvent.layout.height,
+        width: event.nativeEvent.layout.width,
+      });
+    };
 
-        if (width !== leftLayout.width || height !== leftLayout.height) {
-          setLeftLayout({
-            width,
-            height,
-          });
-        }
-      },
-      [leftLayout.height, leftLayout.width]
-    );
-
-    const onRightAffixLayoutChange = React.useCallback(
-      (event: LayoutChangeEvent) => {
-        const width = roundLayoutSize(event.nativeEvent.layout.width);
-        const height = roundLayoutSize(event.nativeEvent.layout.height);
-
-        if (width !== rightLayout.width || height !== rightLayout.height) {
-          setRightLayout({
-            width,
-            height,
-          });
-        }
-      },
-      [rightLayout.height, rightLayout.width]
-    );
+    const onRightAffixLayoutChange = (event: LayoutChangeEvent) => {
+      setRightLayout({
+        width: event.nativeEvent.layout.width,
+        height: event.nativeEvent.layout.height,
+      });
+    };
 
     const handleFocus = (args: any) => {
       if (disabled || !editable) {
@@ -441,44 +388,14 @@ const TextInput = forwardRef<TextInputHandles, Props>(
       rest.onChangeText?.(value);
     };
 
-    const handleLayoutAnimatedText = React.useCallback(
-      (e: LayoutChangeEvent) => {
-        const width = roundLayoutSize(e.nativeEvent.layout.width);
-        const height = roundLayoutSize(e.nativeEvent.layout.height);
-
-        if (width !== labelLayout.width || height !== labelLayout.height) {
-          setLabelLayout({
-            width,
-            height,
-            measured: true,
-          });
-        }
-      },
-      [labelLayout.height, labelLayout.width]
-    );
-
-    const handleLabelTextLayout = React.useCallback(
-      ({ nativeEvent }: NativeSyntheticEvent<TextLayoutEventData>) => {
-        setLabelTextLayout({
-          width: nativeEvent.lines.reduce(
-            (acc, line) => acc + Math.ceil(line.width),
-            0
-          ),
-        });
-      },
-      []
-    );
-
-    const handleInputContainerLayout = React.useCallback(
-      ({ nativeEvent: { layout } }: LayoutChangeEvent) => {
-        setInputContainerLayout({
-          width: layout.width,
-        });
-      },
-      []
-    );
-
-    const forceFocus = React.useCallback(() => root.current?.focus(), []);
+    const handleLayoutAnimatedText = (e: LayoutChangeEvent) => {
+      setLabelLayout({
+        width: e.nativeEvent.layout.width,
+        height: e.nativeEvent.layout.height,
+        measured: true,
+      });
+    };
+    const forceFocus = () => root.current?.focus();
 
     const { maxFontSizeMultiplier = 1.5 } = rest;
 
@@ -492,7 +409,6 @@ const TextInput = forwardRef<TextInputHandles, Props>(
           editable={editable}
           render={render}
           {...rest}
-          theme={theme}
           value={value}
           parentState={{
             labeled,
@@ -500,11 +416,9 @@ const TextInput = forwardRef<TextInputHandles, Props>(
             focused,
             placeholder,
             value,
-            labelTextLayout,
             labelLayout,
             leftLayout,
             rightLayout,
-            inputContainerLayout,
           }}
           innerRef={(ref) => {
             root.current = ref;
@@ -514,12 +428,9 @@ const TextInput = forwardRef<TextInputHandles, Props>(
           onBlur={handleBlur}
           onChangeText={handleChangeText}
           onLayoutAnimatedText={handleLayoutAnimatedText}
-          onInputLayout={handleInputContainerLayout}
-          onLabelTextLayout={handleLabelTextLayout}
           onLeftAffixLayoutChange={onLeftAffixLayoutChange}
           onRightAffixLayoutChange={onRightAffixLayoutChange}
           maxFontSizeMultiplier={maxFontSizeMultiplier}
-          contentStyle={contentStyle}
         />
       );
     }
@@ -533,7 +444,6 @@ const TextInput = forwardRef<TextInputHandles, Props>(
         editable={editable}
         render={render}
         {...rest}
-        theme={theme}
         value={value}
         parentState={{
           labeled,
@@ -541,11 +451,9 @@ const TextInput = forwardRef<TextInputHandles, Props>(
           focused,
           placeholder,
           value,
-          labelTextLayout,
           labelLayout,
           leftLayout,
           rightLayout,
-          inputContainerLayout,
         }}
         innerRef={(ref) => {
           root.current = ref;
@@ -553,14 +461,11 @@ const TextInput = forwardRef<TextInputHandles, Props>(
         onFocus={handleFocus}
         forceFocus={forceFocus}
         onBlur={handleBlur}
-        onInputLayout={handleInputContainerLayout}
         onChangeText={handleChangeText}
         onLayoutAnimatedText={handleLayoutAnimatedText}
-        onLabelTextLayout={handleLabelTextLayout}
         onLeftAffixLayoutChange={onLeftAffixLayoutChange}
         onRightAffixLayoutChange={onRightAffixLayoutChange}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
-        contentStyle={contentStyle}
       />
     );
   }
@@ -572,4 +477,4 @@ TextInput.Icon = TextInputIcon;
 // @ts-ignore Types of property 'theme' are incompatible.
 TextInput.Affix = TextInputAffix;
 
-export default TextInput;
+export default withTheme(TextInput);

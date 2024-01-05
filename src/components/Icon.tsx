@@ -1,15 +1,13 @@
 import * as React from 'react';
 import {
-  I18nManager,
   Image,
-  ImageSourcePropType,
+  I18nManager,
   Platform,
+  ImageSourcePropType,
 } from 'react-native';
-
-import { accessibilityProps } from './MaterialCommunityIcon';
 import { Consumer as SettingsConsumer } from '../core/settings';
-import { useInternalTheme } from '../core/theming';
-import type { ThemeProp } from '../types';
+import { accessibilityProps } from './MaterialCommunityIcon';
+import { withTheme } from '../core/theming';
 
 type IconSourceBase = string | ImageSourcePropType;
 
@@ -19,11 +17,17 @@ export type IconSource =
   | ((props: IconProps & { color: string }) => React.ReactNode);
 
 type IconProps = {
-  /**
-   * Size of icon.
-   */
   size: number;
   allowFontScaling?: boolean;
+};
+
+type Props = IconProps & {
+  color?: string;
+  source: any;
+  /**
+   * @optional
+   */
+  theme: ReactNativePaper.Theme;
 };
 
 const isImageSource = (source: any) =>
@@ -61,110 +65,59 @@ export const isValidIcon = (source: any) =>
 export const isEqualIcon = (a: any, b: any) =>
   a === b || getIconId(a) === getIconId(b);
 
-export type Props = IconProps & {
-  /**
-   * Icon to display.
-   */
-  source: any;
-  /**
-   * Color of the icon.
-   */
-  color?: string;
-  /**
-   * TestID used for testing purposes
-   */
-  testID?: string;
-  /**
-   * @optional
-   */
-  theme?: ThemeProp;
-};
-
-/**
- * An icon component which renders icon from vector library.
- *
- * ## Usage
- * ```js
- * import * as React from 'react';
- * import { Icon, MD3Colors } from 'react-native-paper';
- *
- * const MyComponent = () => (
- *   <Icon
- *     source="camera"
- *     color={MD3Colors.error50}
- *     size={20}
- *   />
- * );
- *
- * export default MyComponent;
- * ```
- */
-
-const Icon = ({
-  source,
-  color,
-  size,
-  theme: themeOverrides,
-  testID,
-  ...rest
-}: Props) => {
-  const theme = useInternalTheme(themeOverrides);
+const Icon = ({ source, color, size, theme, ...rest }: Props) => {
   const direction =
     typeof source === 'object' && source.direction && source.source
       ? source.direction === 'auto'
-        ? I18nManager.getConstants().isRTL
+        ? I18nManager.isRTL
           ? 'rtl'
           : 'ltr'
         : source.direction
       : null;
-
   const s =
     typeof source === 'object' && source.direction && source.source
       ? source.source
       : source;
-  const iconColor =
-    color || (theme.isV3 ? theme.colors.onSurface : theme.colors.text);
+  const iconColor = color || theme.colors.text;
 
   if (isImageSource(s)) {
     return (
       <Image
         {...rest}
-        testID={testID}
         source={s}
         style={[
           {
             transform: [{ scaleX: direction === 'rtl' ? -1 : 1 }],
           },
+          // eslint-disable-next-line react-native/no-inline-styles
           {
             width: size,
             height: size,
             tintColor: color,
-            resizeMode: `contain`,
+            resizeMode: 'contain',
           },
         ]}
         {...accessibilityProps}
-        accessibilityIgnoresInvertColors
       />
     );
   } else if (typeof s === 'string') {
     return (
       <SettingsConsumer>
         {({ icon }) => {
-          return icon?.({
+          return icon({
             name: s,
             color: iconColor,
             size,
             direction,
-            testID,
           });
         }}
       </SettingsConsumer>
     );
   } else if (typeof s === 'function') {
-    return s({ color: iconColor, size, direction, testID });
+    return s({ color: iconColor, size, direction });
   }
 
   return null;
 };
 
-export default Icon;
+export default withTheme(Icon);

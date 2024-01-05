@@ -1,12 +1,11 @@
 import * as React from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
-
+import { Animated, View, StyleSheet } from 'react-native';
+import color from 'color';
 import { RadioButtonContext, RadioButtonContextType } from './RadioButtonGroup';
 import { handlePress, isChecked } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { $RemoveChildren, ThemeProp } from '../../types';
-import { getAndroidSelectionControlColor } from '../Checkbox/utils';
 import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import { withTheme } from '../../core/theming';
+import type { $RemoveChildren } from '../../types';
 
 export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
@@ -36,7 +35,7 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -49,17 +48,27 @@ const BORDER_WIDTH = 2;
  * Radio buttons allow the selection a single option from a set.
  * This component follows platform guidelines for Android, but can be used
  * on any platform.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img src="screenshots/radio-enabled.android.png" />
+ *     <figcaption>Enabled</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/radio-disabled.android.png" />
+ *     <figcaption>Disabled</figcaption>
+ *   </figure>
+ * </div>
  */
 const RadioButtonAndroid = ({
   disabled,
   onPress,
-  theme: themeOverrides,
+  theme,
   value,
   status,
   testID,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const { current: borderAnim } = React.useRef<Animated.Value>(
     new Animated.Value(BORDER_WIDTH)
   );
@@ -98,6 +107,16 @@ const RadioButtonAndroid = ({
     }
   }, [status, borderAnim, radioAnim, scale]);
 
+  const checkedColor = rest.color || theme.colors.accent;
+  const uncheckedColor =
+    rest.uncheckedColor ||
+    color(theme.colors.text)
+      .alpha(theme.dark ? 0.7 : 0.54)
+      .rgb()
+      .string();
+
+  let rippleColor: string, radioColor: string;
+
   return (
     <RadioButtonContext.Consumer>
       {(context?: RadioButtonContextType) => {
@@ -108,14 +127,13 @@ const RadioButtonAndroid = ({
             value,
           }) === 'checked';
 
-        const { rippleColor, selectionControlColor } =
-          getAndroidSelectionControlColor({
-            theme,
-            disabled,
-            checked,
-            customColor: rest.color,
-            customUncheckedColor: rest.uncheckedColor,
-          });
+        if (disabled) {
+          rippleColor = color(theme.colors.text).alpha(0.16).rgb().string();
+          radioColor = theme.colors.disabled;
+        } else {
+          rippleColor = color(checkedColor).fade(0.32).rgb().string();
+          radioColor = checked ? checkedColor : uncheckedColor;
+        }
 
         return (
           <TouchableRipple
@@ -125,27 +143,30 @@ const RadioButtonAndroid = ({
             onPress={
               disabled
                 ? undefined
-                : (event) => {
+                : () => {
                     handlePress({
                       onPress,
                       onValueChange: context?.onValueChange,
                       value,
-                      event,
                     });
                   }
+            }
+            // @ts-expect-error We keep old a11y props for backwards compat with old RN versions
+            accessibilityTraits={disabled ? ['button', 'disabled'] : 'button'}
+            accessibilityComponentType={
+              checked ? 'radiobutton_checked' : 'radiobutton_unchecked'
             }
             accessibilityRole="radio"
             accessibilityState={{ disabled, checked }}
             accessibilityLiveRegion="polite"
             style={styles.container}
             testID={testID}
-            theme={theme}
           >
             <Animated.View
               style={[
                 styles.radio,
                 {
-                  borderColor: selectionControlColor,
+                  borderColor: radioColor,
                   borderWidth: borderAnim,
                 },
               ]}
@@ -156,7 +177,7 @@ const RadioButtonAndroid = ({
                     style={[
                       styles.dot,
                       {
-                        backgroundColor: selectionControlColor,
+                        backgroundColor: radioColor,
                         transform: [{ scale: radioAnim }],
                       },
                     ]}
@@ -194,7 +215,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RadioButtonAndroid;
+export default withTheme(RadioButtonAndroid);
 
 // @component-docs ignore-next-line
-export { RadioButtonAndroid };
+const RadioButtonAndroidWithTheme = withTheme(RadioButtonAndroid);
+// @component-docs ignore-next-line
+export { RadioButtonAndroidWithTheme as RadioButtonAndroid };

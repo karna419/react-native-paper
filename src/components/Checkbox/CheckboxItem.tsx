@@ -1,7 +1,6 @@
 import * as React from 'react';
+
 import {
-  ColorValue,
-  GestureResponderEvent,
   StyleProp,
   StyleSheet,
   TextStyle,
@@ -12,10 +11,9 @@ import {
 import Checkbox from './Checkbox';
 import CheckboxAndroid from './CheckboxAndroid';
 import CheckboxIOS from './CheckboxIOS';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp, MD3TypescaleKey } from '../../types';
-import TouchableRipple from '../TouchableRipple/TouchableRipple';
 import Text from '../Typography/Text';
+import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import { withTheme } from '../../core/theming';
 
 export type Props = {
   /**
@@ -33,11 +31,7 @@ export type Props = {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
-  /**
-   * Accessibility label for the touchable. This is read by the screen reader when the user taps the touchable.
-   */
-  accessibilityLabel?: string;
+  onPress?: () => void;
   /**
    * Custom color for unchecked checkbox.
    */
@@ -47,42 +41,17 @@ export type Props = {
    */
   color?: string;
   /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
-  /**
    * Additional styles for container View.
    */
   style?: StyleProp<ViewStyle>;
-  /**
-   * Specifies the largest possible scale a label font can reach.
-   */
-  labelMaxFontSizeMultiplier?: number;
   /**
    * Style that is passed to Label element.
    */
   labelStyle?: StyleProp<TextStyle>;
   /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Label text variant defines appropriate text styles for type role and its size.
-   * Available variants:
-   *
-   *  Display: `displayLarge`, `displayMedium`, `displaySmall`
-   *
-   *  Headline: `headlineLarge`, `headlineMedium`, `headlineSmall`
-   *
-   *  Title: `titleLarge`, `titleMedium`, `titleSmall`
-   *
-   *  Label:  `labelLarge`, `labelMedium`, `labelSmall`
-   *
-   *  Body: `bodyLarge`, `bodyMedium`, `bodySmall`
-   */
-  labelVariant?: keyof typeof MD3TypescaleKey;
-  /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -123,18 +92,13 @@ const CheckboxItem = ({
   label,
   onPress,
   labelStyle,
-  theme: themeOverrides,
+  theme,
   testID,
   mode,
   position = 'trailing',
-  accessibilityLabel = label,
   disabled,
-  labelVariant = 'bodyLarge',
-  labelMaxFontSizeMultiplier = 1.5,
-  rippleColor,
   ...props
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const checkboxProps = { ...props, status, theme, disabled };
   const isLeading = position === 'leading';
   let checkbox;
@@ -147,20 +111,9 @@ const CheckboxItem = ({
     checkbox = <Checkbox {...checkboxProps} />;
   }
 
-  const textColor = theme.isV3 ? theme.colors.onSurface : theme.colors.text;
-  const disabledTextColor = theme.isV3
-    ? theme.colors.onSurfaceDisabled
-    : theme.colors.disabled;
-  const textAlign = isLeading ? 'right' : 'left';
-
-  const computedStyle = {
-    color: disabled ? disabledTextColor : textColor,
-    textAlign,
-  } as TextStyle;
-
   return (
     <TouchableRipple
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={label}
       accessibilityRole="checkbox"
       accessibilityState={{
         checked: status === 'checked',
@@ -169,8 +122,6 @@ const CheckboxItem = ({
       onPress={onPress}
       testID={testID}
       disabled={disabled}
-      rippleColor={rippleColor}
-      theme={theme}
     >
       <View
         style={[styles.container, style]}
@@ -179,13 +130,12 @@ const CheckboxItem = ({
       >
         {isLeading && checkbox}
         <Text
-          variant={labelVariant}
-          testID={`${testID}-text`}
-          maxFontSizeMultiplier={labelMaxFontSizeMultiplier}
           style={[
             styles.label,
-            !theme.isV3 && styles.font,
-            computedStyle,
+            {
+              color: disabled ? theme.colors.disabled : theme.colors.text,
+              textAlign: isLeading ? 'right' : 'left',
+            },
             labelStyle,
           ]}
         >
@@ -199,10 +149,12 @@ const CheckboxItem = ({
 
 CheckboxItem.displayName = 'Checkbox.Item';
 
-export default CheckboxItem;
+export default withTheme(CheckboxItem);
 
 // @component-docs ignore-next-line
-export { CheckboxItem };
+const CheckboxItemWithTheme = withTheme(CheckboxItem);
+// @component-docs ignore-next-line
+export { CheckboxItemWithTheme as CheckboxItem };
 
 const styles = StyleSheet.create({
   container: {
@@ -213,10 +165,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   label: {
+    fontSize: 16,
     flexShrink: 1,
     flexGrow: 1,
-  },
-  font: {
-    fontSize: 16,
   },
 });

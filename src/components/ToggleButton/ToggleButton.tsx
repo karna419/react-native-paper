@@ -1,24 +1,16 @@
 import * as React from 'react';
 import {
-  GestureResponderEvent,
-  StyleProp,
   StyleSheet,
+  StyleProp,
   ViewStyle,
-  View,
-  Animated,
-  ColorValue,
+  GestureResponderEvent,
 } from 'react-native';
-
+import { withTheme } from '../../core/theming';
 import color from 'color';
-
+import IconButton from '../IconButton';
 import { ToggleButtonGroupContext } from './ToggleButtonGroup';
-import { getToggleButtonColor } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import { black, white } from '../../styles/themes/v2/colors';
-import type { ThemeProp } from '../../types';
-import { forwardRef } from '../../utils/forwardRef';
+import { black, white } from '../../styles/colors';
 import type { IconSource } from '../Icon';
-import IconButton from '../IconButton/IconButton';
 
 export type Props = {
   /**
@@ -32,11 +24,7 @@ export type Props = {
   /**
    * Custom text color for button.
    */
-  iconColor?: string;
-  /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
+  color?: string;
   /**
    * Whether the button is disabled.
    */
@@ -57,21 +45,20 @@ export type Props = {
    * Status of button.
    */
   status?: 'checked' | 'unchecked';
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  style?: StyleProp<ViewStyle>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  ref?: React.RefObject<View>;
-  /**
-   * testID to be used on tests.
-   */
-  testID?: string;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * Toggle buttons can be used to group related options. To emphasize groups of related toggle buttons,
  * a group should share a common container.
+ *
+ * <div class="screenshots">
+ *   <img class="medium" src="screenshots/toggle-button.png" />
+ * </div>
  *
  * ## Usage
  * ```js
@@ -99,79 +86,72 @@ export type Props = {
  *
  * ```
  */
-const ToggleButton = forwardRef<View, Props>(
-  (
-    {
-      icon,
-      size,
-      theme: themeOverrides,
-      accessibilityLabel,
-      disabled,
-      style,
-      value,
-      status,
-      onPress,
-      rippleColor,
-      ...rest
-    }: Props,
-    ref
-  ) => {
-    const theme = useInternalTheme(themeOverrides);
-    const borderRadius = theme.roundness;
+const ToggleButton = ({
+  icon,
+  size,
+  theme,
+  accessibilityLabel,
+  disabled,
+  style,
+  value,
+  status,
+  onPress,
+  ...rest
+}: Props) => {
+  const borderRadius = theme.roundness;
 
-    return (
-      <ToggleButtonGroupContext.Consumer>
-        {(
-          context: { value: string | null; onValueChange: Function } | null
-        ) => {
-          const checked: boolean | null =
-            (context && context.value === value) || status === 'checked';
+  return (
+    <ToggleButtonGroupContext.Consumer>
+      {(context: { value: string | null; onValueChange: Function } | null) => {
+        let backgroundColor;
 
-          const backgroundColor = getToggleButtonColor({ theme, checked });
-          const borderColor = theme.isV3
-            ? theme.colors.outline
-            : color(theme.dark ? white : black)
-                .alpha(0.29)
-                .rgb()
-                .string();
+        const checked: boolean | null =
+          (context && context.value === value) || status === 'checked';
 
-          return (
-            <IconButton
-              borderless={false}
-              icon={icon}
-              onPress={(e?: GestureResponderEvent | string) => {
-                if (onPress) {
-                  onPress(e);
-                }
+        if (checked) {
+          backgroundColor = theme.dark
+            ? 'rgba(255, 255, 255, .12)'
+            : 'rgba(0, 0, 0, .08)';
+        } else {
+          backgroundColor = 'transparent';
+        }
 
-                if (context) {
-                  context.onValueChange(!checked ? value : null);
-                }
-              }}
-              size={size}
-              accessibilityLabel={accessibilityLabel}
-              accessibilityState={{ disabled, selected: checked }}
-              disabled={disabled}
-              style={[
-                styles.content,
-                {
-                  backgroundColor,
-                  borderRadius,
-                  borderColor,
-                },
-                style,
-              ]}
-              ref={ref}
-              theme={theme}
-              rippleColor={rippleColor}
-              {...rest}
-            />
-          );
-        }}
-      </ToggleButtonGroupContext.Consumer>
-    );
-  }
-);
+        return (
+          <IconButton
+            borderless={false}
+            icon={icon}
+            onPress={(e?: GestureResponderEvent | string) => {
+              if (onPress) {
+                onPress(e);
+              }
+
+              if (context) {
+                context.onValueChange(!checked ? value : null);
+              }
+            }}
+            size={size}
+            accessibilityLabel={accessibilityLabel}
+            accessibilityState={{ disabled, selected: checked }}
+            disabled={disabled}
+            style={[
+              styles.content,
+              {
+                backgroundColor,
+                borderRadius,
+                borderColor: color(theme.dark ? white : black)
+                  .alpha(0.29)
+                  .rgb()
+                  .string(),
+              },
+              style,
+            ]}
+            {...rest}
+          />
+        );
+      }}
+    </ToggleButtonGroupContext.Consumer>
+  );
+};
 
 const styles = StyleSheet.create({
   content: {
@@ -181,7 +161,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ToggleButton;
+export default withTheme(ToggleButton);
 
 // @component-docs ignore-next-line
-export { ToggleButton };
+const ToggleButtonWithTheme = withTheme(ToggleButton);
+// @component-docs ignore-next-line
+export { ToggleButtonWithTheme as ToggleButton };

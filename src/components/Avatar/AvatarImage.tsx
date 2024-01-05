@@ -1,16 +1,14 @@
 import * as React from 'react';
 import {
   Image,
-  ImageProps,
   ImageSourcePropType,
-  StyleProp,
+  ImageProps,
   StyleSheet,
   View,
   ViewStyle,
+  StyleProp,
 } from 'react-native';
-
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
+import { withTheme } from '../../core/theming';
 
 const defaultSize = 64;
 
@@ -57,11 +55,17 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * Avatars can be used to represent people in a graphical way.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/avatar-image.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -84,12 +88,12 @@ const AvatarImage = ({
   onLoadEnd,
   onLoadStart,
   onProgress,
-  theme: themeOverrides,
-  testID,
+  theme,
   ...rest
 }: Props) => {
-  const { colors } = useInternalTheme(themeOverrides);
-  const { backgroundColor = colors?.primary } = StyleSheet.flatten(style) || {};
+  const { colors } = theme;
+
+  const { backgroundColor = colors.primary } = StyleSheet.flatten(style) || {};
 
   return (
     <View
@@ -107,7 +111,6 @@ const AvatarImage = ({
       {typeof source === 'function' && source({ size })}
       {typeof source !== 'function' && (
         <Image
-          testID={testID}
           source={source}
           style={{ width: size, height: size, borderRadius: size / 2 }}
           onError={onError}
@@ -116,7 +119,6 @@ const AvatarImage = ({
           onLoadEnd={onLoadEnd}
           onLoadStart={onLoadStart}
           onProgress={onProgress}
-          accessibilityIgnoresInvertColors
         />
       )}
     </View>
@@ -125,4 +127,4 @@ const AvatarImage = ({
 
 AvatarImage.displayName = 'Avatar.Image';
 
-export default AvatarImage;
+export default withTheme(AvatarImage);

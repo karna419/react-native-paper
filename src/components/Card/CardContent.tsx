@@ -24,16 +24,23 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
 /**
  * A component to show content inside a Card.
  *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/card-content-example.png" />
+ *   </figure>
+ * </div>
+ *
+ *
  * ## Usage
  * ```js
  * import * as React from 'react';
- * import { Card, Text } from 'react-native-paper';
+ * import { Card, Title, Paragraph } from 'react-native-paper';
  *
  * const MyComponent = () => (
  *   <Card>
  *     <Card.Content>
- *       <Text variant="titleLarge">Card title</Text>
- *       <Text variant="bodyMedium">Card content</Text>
+ *       <Title>Card title</Title>
+ *       <Paragraph>Card content</Paragraph>
  *     </Card.Content>
  *   </Card>
  * );
@@ -42,8 +49,8 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
  * ```
  */
 const CardContent = ({ index, total, siblings, style, ...rest }: Props) => {
-  const cover = 'withInternalTheme(CardCover)';
-  const title = 'withInternalTheme(CardTitle)';
+  const cover = 'withTheme(CardCover)';
+  const title = 'withTheme(CardTitle)';
 
   let contentStyle, prev, next;
 

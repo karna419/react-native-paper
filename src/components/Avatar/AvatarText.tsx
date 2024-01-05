@@ -1,18 +1,16 @@
 import * as React from 'react';
 import {
-  StyleProp,
-  StyleSheet,
-  TextStyle,
-  useWindowDimensions,
   View,
   ViewStyle,
+  StyleSheet,
+  StyleProp,
+  TextStyle,
+  useWindowDimensions,
 } from 'react-native';
-
-import { useInternalTheme } from '../../core/theming';
-import { white } from '../../styles/themes/v2/colors';
-import type { ThemeProp } from '../../types';
-import getContrastingColor from '../../utils/getContrastingColor';
 import Text from '../Typography/Text';
+import { withTheme } from '../../core/theming';
+import { white } from '../../styles/colors';
+import getContrastingColor from '../../utils/getContrastingColor';
 
 const defaultSize = 64;
 
@@ -38,17 +36,19 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
    */
   labelStyle?: StyleProp<TextStyle>;
   /**
-   * Specifies the largest possible scale a text font can reach.
-   */
-  maxFontSizeMultiplier?: number;
-  /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * Avatars can be used to represent people in a graphical way.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/avatar-text.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -64,14 +64,12 @@ const AvatarText = ({
   label,
   size = defaultSize,
   style,
+  theme,
   labelStyle,
   color: customColor,
-  theme: themeOverrides,
-  maxFontSizeMultiplier,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { backgroundColor = theme.colors?.primary, ...restStyle } =
+  const { backgroundColor = theme.colors.primary, ...restStyle } =
     StyleSheet.flatten(style) || {};
   const textColor =
     customColor ??
@@ -103,7 +101,6 @@ const AvatarText = ({
           labelStyle,
         ]}
         numberOfLines={1}
-        maxFontSizeMultiplier={maxFontSizeMultiplier}
       >
         {label}
       </Text>
@@ -124,4 +121,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AvatarText;
+export default withTheme(AvatarText);

@@ -1,19 +1,17 @@
 import * as React from 'react';
-import { Animated, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import type { LayoutChangeEvent } from 'react-native';
-
-import useLatestCallback from 'use-latest-callback';
-
-import Button from './Button/Button';
-import Icon, { IconSource } from './Icon';
+import { View, ViewStyle, StyleSheet, StyleProp, Animated } from 'react-native';
 import Surface from './Surface';
 import Text from './Typography/Text';
-import { useInternalTheme } from '../core/theming';
-import type { $Omit, $RemoveChildren, ThemeProp } from '../types';
+import Button from './Button';
+import Icon, { IconSource } from './Icon';
+import { withTheme } from '../core/theming';
+import type { $RemoveChildren } from '../types';
+import shadow from '../styles/shadow';
 
+const ELEVATION = 1;
 const DEFAULT_MAX_WIDTH = 960;
 
-export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
+export type Props = $RemoveChildren<typeof Surface> & {
   /**
    * Whether banner is currently visible.
    */
@@ -21,7 +19,7 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
   /**
    * Content that will be displayed inside banner.
    */
-  children: React.ReactNode;
+  children: string;
   /**
    * Icon to display for the `Banner`. Can be an image.
    */
@@ -35,31 +33,22 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
    *
    * To customize button you can pass other props that button component takes.
    */
-  actions?: Array<
+  actions: Array<
     {
       label: string;
-    } & $RemoveChildren<typeof Button>
+    } & Omit<React.ComponentProps<typeof Button>, 'children'>
   >;
   /**
    * Style of banner's inner content.
    * Use this prop to apply custom width for wide layouts.
    */
   contentStyle?: StyleProp<ViewStyle>;
-  /**
-   * @supported Available in v5.x with theme version 3
-   * Changes Banner shadow and background on iOS and Android.
-   */
-  elevation?: 0 | 1 | 2 | 3 | 4 | 5 | Animated.Value;
-  /**
-   * Specifies the largest possible scale a text font can reach.
-   */
-  maxFontSizeMultiplier?: number;
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  style?: StyleProp<ViewStyle>;
   ref?: React.RefObject<View>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * @optional
    * Optional callback that will be called after the opening animation finished running normally
@@ -72,8 +61,23 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
   onHideAnimationFinished?: Animated.EndCallback;
 };
 
+type NativeEvent = {
+  nativeEvent: {
+    layout: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+  };
+};
+
 /**
  * Banner displays a prominent message and related actions.
+ *
+ * <div class="screenshots">
+ *   <img class="medium" src="screenshots/banner.gif" />
+ * </div>
  *
  * ## Usage
  * ```js
@@ -120,17 +124,14 @@ const Banner = ({
   visible,
   icon,
   children,
-  actions = [],
+  actions,
   contentStyle,
-  elevation = 1,
   style,
-  theme: themeOverrides,
+  theme,
   onShowAnimationFinished = () => {},
   onHideAnimationFinished = () => {},
-  maxFontSizeMultiplier,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const { current: position } = React.useRef<Animated.Value>(
     new Animated.Value(visible ? 1 : 0)
   );
@@ -142,15 +143,7 @@ const Banner = ({
     measured: false,
   });
 
-  const showCallback = useLatestCallback(onShowAnimationFinished);
-  const hideCallback = useLatestCallback(onHideAnimationFinished);
-
   const { scale } = theme.animation;
-
-  const opacity = position.interpolate({
-    inputRange: [0, 0.1, 1],
-    outputRange: [0, 1, 1],
-  });
 
   React.useEffect(() => {
     if (visible) {
@@ -159,19 +152,18 @@ const Banner = ({
         duration: 250 * scale,
         toValue: 1,
         useNativeDriver: false,
-      }).start(showCallback);
+      }).start(onShowAnimationFinished);
     } else {
       // hide
       Animated.timing(position, {
         duration: 200 * scale,
         toValue: 0,
         useNativeDriver: false,
-      }).start(hideCallback);
+      }).start(onHideAnimationFinished);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, position, scale]);
 
-  const handleLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+  const handleLayout = ({ nativeEvent }: NativeEvent) => {
     const { height } = nativeEvent.layout;
     setLayout({ height, measured: true });
   };
@@ -192,9 +184,8 @@ const Banner = ({
   return (
     <Surface
       {...rest}
-      style={[!theme.isV3 && styles.elevation, { opacity }, style]}
+      style={[styles.container, shadow(ELEVATION) as ViewStyle, style]}
       theme={theme}
-      {...(theme.isV3 && { elevation })}
     >
       <View style={[styles.wrapper, contentStyle]}>
         <Animated.View style={{ height }} />
@@ -210,7 +201,7 @@ const Banner = ({
             !layout.measured && !visible
               ? // If we haven't measured banner's height yet and it's invisible,
                 // hide it with opacity: 0 so user doesn't see it
-                styles.transparent
+                { opacity: 0 }
               : null,
           ]}
         >
@@ -221,17 +212,9 @@ const Banner = ({
               </View>
             ) : null}
             <Text
-              style={[
-                styles.message,
-                {
-                  color: theme.isV3
-                    ? theme.colors.onSurface
-                    : theme.colors.text,
-                },
-              ]}
+              style={[styles.message, { color: theme.colors.text }]}
               accessibilityLiveRegion={visible ? 'polite' : 'none'}
               accessibilityRole="alert"
-              maxFontSizeMultiplier={maxFontSizeMultiplier}
             >
               {children}
             </Text>
@@ -243,8 +226,7 @@ const Banner = ({
                 compact
                 mode="text"
                 style={styles.button}
-                textColor={theme.colors?.primary}
-                theme={theme}
+                color={theme.colors.primary}
                 {...others}
               >
                 {label}
@@ -258,6 +240,9 @@ const Banner = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    elevation: ELEVATION,
+  },
   wrapper: {
     overflow: 'hidden',
     alignSelf: 'center',
@@ -291,12 +276,6 @@ const styles = StyleSheet.create({
   button: {
     margin: 4,
   },
-  elevation: {
-    elevation: 1,
-  },
-  transparent: {
-    opacity: 0,
-  },
 });
 
-export default Banner;
+export default withTheme(Banner);

@@ -12,10 +12,17 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
 /**
  * A component to show content in a Dialog.
  *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/dialog-content.png" />
+ *   </figure>
+ * </div>
+ *
+ *
  * ## Usage
  * ```js
  * import * as React from 'react';
- * import { Dialog, Portal, Text } from 'react-native-paper';
+ * import { Paragraph, Dialog, Portal } from 'react-native-paper';
  *
  * const MyComponent = () => {
  *   const [visible, setVisible] = React.useState(false);
@@ -26,7 +33,7 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
  *     <Portal>
  *       <Dialog visible={visible} onDismiss={hideDialog}>
  *         <Dialog.Content>
- *           <Text variant="bodyMedium">This is simple dialog</Text>
+ *           <Paragraph>This is simple dialog</Paragraph>
  *         </Dialog.Content>
  *       </Dialog>
  *     </Portal>

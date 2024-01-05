@@ -1,11 +1,7 @@
 import * as React from 'react';
-import { Image, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-
-import { getCardCoverStyle } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import { grey200 } from '../../styles/themes/v2/colors';
-import type { ThemeProp } from '../../types';
-import { splitStyles } from '../../utils/splitStyles';
+import { StyleSheet, View, ViewStyle, Image, StyleProp } from 'react-native';
+import { withTheme } from '../../core/theming';
+import { grey200 } from '../../styles/colors';
 
 export type Props = React.ComponentPropsWithRef<typeof Image> & {
   /**
@@ -20,11 +16,17 @@ export type Props = React.ComponentPropsWithRef<typeof Image> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * A component to show a cover image inside a Card.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/card-cover.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -42,35 +44,31 @@ export type Props = React.ComponentPropsWithRef<typeof Image> & {
  *
  * @extends Image props https://reactnative.dev/docs/image#props
  */
-const CardCover = ({
-  index,
-  total,
-  style,
-  theme: themeOverrides,
-  ...rest
-}: Props) => {
-  const theme = useInternalTheme(themeOverrides);
+const CardCover = ({ index, total, style, theme, ...rest }: Props) => {
+  const { roundness } = theme;
 
-  const flattenedStyles = (StyleSheet.flatten(style) || {}) as ViewStyle;
-  const [, borderRadiusStyles] = splitStyles(
-    flattenedStyles,
-    (style) => style.startsWith('border') && style.endsWith('Radius')
-  );
+  let coverStyle;
 
-  const coverStyle = getCardCoverStyle({
-    theme,
-    index,
-    total,
-    borderRadiusStyles,
-  });
+  if (index === 0) {
+    if (total === 1) {
+      coverStyle = {
+        borderRadius: roundness,
+      };
+    } else {
+      coverStyle = {
+        borderTopLeftRadius: roundness,
+        borderTopRightRadius: roundness,
+      };
+    }
+  } else if (typeof total === 'number' && index === total - 1) {
+    coverStyle = {
+      borderBottomLeftRadius: roundness,
+    };
+  }
 
   return (
     <View style={[styles.container, coverStyle, style]}>
-      <Image
-        {...rest}
-        style={[styles.image, coverStyle]}
-        accessibilityIgnoresInvertColors
-      />
+      <Image {...rest} style={[styles.image, coverStyle]} />
     </View>
   );
 };
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CardCover;
+export default withTheme(CardCover);
 
 // @component-docs ignore-next-line
 export { CardCover };

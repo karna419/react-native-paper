@@ -1,26 +1,17 @@
+import color from 'color';
 import * as React from 'react';
 import {
-  AccessibilityState,
-  ColorValue,
-  GestureResponderEvent,
   StyleProp,
   StyleSheet,
   TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
-
-import {
-  getContentMaxWidth,
-  getMenuItemColor,
-  MAX_WIDTH,
-  MIN_WIDTH,
-} from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
 import Icon, { IconSource } from '../Icon';
 import TouchableRipple from '../TouchableRipple/TouchableRipple';
 import Text from '../Typography/Text';
+import { black, white } from '../../styles/colors';
+import { withTheme } from '../../core/theming';
 
 export type Props = {
   /**
@@ -28,35 +19,17 @@ export type Props = {
    */
   title: React.ReactNode;
   /**
-   * @renamed Renamed from 'icon' to 'leadingIcon' in v5.x
-   *
-   * Leading icon to display for the `MenuItem`.
+   * Icon to display for the `MenuItem`.
    */
-  leadingIcon?: IconSource;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Trailing icon to display for the `MenuItem`.
-   */
-  trailingIcon?: IconSource;
+  icon?: IconSource;
   /**
    * Whether the 'item' is disabled. A disabled 'item' is greyed out and `onPress` is not called on touch.
    */
   disabled?: boolean;
   /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Sets min height with densed layout.
-   */
-  dense?: boolean;
-  /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
-  /**
-   * Specifies the largest possible scale a title font can reach.
-   */
-  titleMaxFontSizeMultiplier?: number;
+  onPress?: () => void;
   /**
    * @optional
    */
@@ -64,13 +37,9 @@ export type Props = {
   contentStyle?: StyleProp<ViewStyle>;
   titleStyle?: StyleProp<TextStyle>;
   /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
-  /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * TestID used for testing purposes
    */
@@ -79,14 +48,16 @@ export type Props = {
    * Accessibility label for the Touchable. This is read by the screen reader when the user taps the component.
    */
   accessibilityLabel?: string;
-  /**
-   * Accessibility state for the Touchable. This is read by the screen reader when the user taps the component.
-   */
-  accessibilityState?: AccessibilityState;
 };
 
 /**
  * A component to show a single list item inside a Menu.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/menu-item.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -96,11 +67,11 @@ export type Props = {
  *
  * const MyComponent = () => (
  *   <View style={{ flex: 1 }}>
- *     <Menu.Item leadingIcon="redo" onPress={() => {}} title="Redo" />
- *     <Menu.Item leadingIcon="undo" onPress={() => {}} title="Undo" />
- *     <Menu.Item leadingIcon="content-cut" onPress={() => {}} title="Cut" disabled />
- *     <Menu.Item leadingIcon="content-copy" onPress={() => {}} title="Copy" disabled />
- *     <Menu.Item leadingIcon="content-paste" onPress={() => {}} title="Paste" />
+ *     <Menu.Item icon="redo" onPress={() => {}} title="Redo" />
+ *     <Menu.Item icon="undo" onPress={() => {}} title="Undo" />
+ *     <Menu.Item icon="content-cut" onPress={() => {}} title="Cut" disabled />
+ *     <Menu.Item icon="content-copy" onPress={() => {}} title="Copy" disabled />
+ *     <Menu.Item icon="content-paste" onPress={() => {}} title="Paste" />
  *   </View>
  * );
  *
@@ -108,107 +79,63 @@ export type Props = {
  * ```
  */
 const MenuItem = ({
-  leadingIcon,
-  trailingIcon,
-  dense,
+  icon,
   title,
   disabled,
   onPress,
   style,
   contentStyle,
+  testID,
   titleStyle,
-  rippleColor: customRippleColor,
-  testID = 'menu-item',
   accessibilityLabel,
-  accessibilityState,
-  theme: themeOverrides,
-  titleMaxFontSizeMultiplier = 1.5,
+  theme,
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { titleColor, iconColor, rippleColor } = getMenuItemColor({
-    theme,
-    disabled,
-    customRippleColor,
-  });
-  const { isV3 } = theme;
+  const disabledColor = color(theme.dark ? white : black)
+    .alpha(0.32)
+    .rgb()
+    .string();
 
-  const containerPadding = isV3 ? 12 : 8;
+  const titleColor = disabled
+    ? disabledColor
+    : color(theme.colors.text).alpha(0.87).rgb().string();
 
-  const iconWidth = isV3 ? 24 : 40;
-
-  const minWidth = MIN_WIDTH - (isV3 ? 12 : 16);
-
-  const maxWidth = getContentMaxWidth({
-    isV3,
-    iconWidth,
-    leadingIcon,
-    trailingIcon,
-  });
-
-  const titleTextStyle = {
-    color: titleColor,
-    ...(isV3 ? theme.fonts.bodyLarge : {}),
-  };
-
-  const newAccessibilityState = { ...accessibilityState, disabled };
+  const iconColor = disabled
+    ? disabledColor
+    : color(theme.colors.text).alpha(0.54).rgb().string();
 
   return (
     <TouchableRipple
-      style={[
-        styles.container,
-        { paddingHorizontal: containerPadding },
-        dense && styles.md3DenseContainer,
-        style,
-      ]}
+      style={[styles.container, style]}
       onPress={onPress}
       disabled={disabled}
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="menuitem"
-      accessibilityState={newAccessibilityState}
-      rippleColor={rippleColor}
+      accessibilityState={{ disabled }}
     >
       <View style={styles.row}>
-        {leadingIcon ? (
-          <View
-            style={[!isV3 && styles.item, { width: iconWidth }]}
-            pointerEvents="box-none"
-          >
-            <Icon source={leadingIcon} size={24} color={iconColor} />
+        {icon ? (
+          <View style={[styles.item, styles.icon]} pointerEvents="box-none">
+            <Icon source={icon} size={24} color={iconColor} />
           </View>
         ) : null}
         <View
           style={[
-            !isV3 && styles.item,
+            styles.item,
             styles.content,
-            { minWidth, maxWidth },
-            isV3 &&
-              (leadingIcon
-                ? styles.md3LeadingIcon
-                : styles.md3WithoutLeadingIcon),
+            icon ? styles.widthWithIcon : null,
             contentStyle,
           ]}
           pointerEvents="none"
         >
           <Text
-            variant="bodyLarge"
             selectable={false}
             numberOfLines={1}
-            testID={`${testID}-title`}
-            style={[!isV3 && styles.title, titleTextStyle, titleStyle]}
-            maxFontSizeMultiplier={titleMaxFontSizeMultiplier}
+            style={[styles.title, { color: titleColor }, titleStyle]}
           >
             {title}
           </Text>
         </View>
-        {isV3 && trailingIcon ? (
-          <View
-            style={[!isV3 && styles.item, { width: iconWidth }]}
-            pointerEvents="box-none"
-          >
-            <Icon source={trailingIcon} size={24} color={iconColor} />
-          </View>
-        ) : null}
       </View>
     </TouchableRipple>
   );
@@ -216,18 +143,23 @@ const MenuItem = ({
 
 MenuItem.displayName = 'Menu.Item';
 
+const minWidth = 112;
+const maxWidth = 280;
+const iconWidth = 40;
+
 const styles = StyleSheet.create({
   container: {
-    minWidth: MIN_WIDTH,
-    maxWidth: MAX_WIDTH,
+    paddingHorizontal: 8,
+    minWidth,
+    maxWidth,
     height: 48,
     justifyContent: 'center',
   },
-  md3DenseContainer: {
-    height: 32,
-  },
   row: {
     flexDirection: 'row',
+  },
+  icon: {
+    width: iconWidth,
   },
   title: {
     fontSize: 16,
@@ -237,13 +169,12 @@ const styles = StyleSheet.create({
   },
   content: {
     justifyContent: 'center',
+    minWidth: minWidth - 16,
+    maxWidth: maxWidth - 16,
   },
-  md3LeadingIcon: {
-    marginLeft: 12,
-  },
-  md3WithoutLeadingIcon: {
-    marginLeft: 4,
+  widthWithIcon: {
+    maxWidth: maxWidth - (iconWidth + 48),
   },
 });
 
-export default MenuItem;
+export default withTheme(MenuItem);

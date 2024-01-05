@@ -1,32 +1,37 @@
 import * as React from 'react';
 
-export type Props<Value = string> = {
+export type Props = {
   /**
    * Function to execute on selection change.
    */
-  onValueChange: (value: Value) => void;
+  onValueChange: (value: string) => void | null;
   /**
    * Value of the currently selected toggle button.
    */
-  value: Value | null;
+  value: string | null;
   /**
    * React elements containing toggle buttons.
    */
   children: React.ReactNode;
 };
 
-type ToggleButtonContextType<Value> = {
-  value: Value | null;
-  onValueChange: (item: Value) => void;
+type ToggleButtonContextType = {
+  value: string | null;
+  onValueChange: (item: string) => void | null;
 };
 
 export const ToggleButtonGroupContext =
-  //@ts-expect-error: TS can't ensure the type from Group to children
   React.createContext<ToggleButtonContextType>(null as any);
 
 /**
  * Toggle group allows to control a group of toggle buttons.</br>
- * It doesn't change the appearance of the toggle buttons. If you want to group them in a row, check out [ToggleButton.Row](ToggleButtonRow).
+ * It doesn't change the appearance of the toggle buttons. If you want to group them in a row, check out <a href="toggle-button-row.html">`ToggleButton.Row`</a>.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/toggle-button-group.gif" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -49,11 +54,7 @@ export const ToggleButtonGroupContext =
  * export default MyComponent;
  *```
  */
-const ToggleButtonGroup = <Value = string,>({
-  value,
-  onValueChange,
-  children,
-}: Props<Value>) => (
+const ToggleButtonGroup = ({ value, onValueChange, children }: Props) => (
   <ToggleButtonGroupContext.Provider
     value={{
       value,

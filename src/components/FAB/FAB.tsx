@@ -1,49 +1,33 @@
+import color from 'color';
 import * as React from 'react';
 import {
-  AccessibilityState,
   Animated,
-  ColorValue,
-  GestureResponderEvent,
-  StyleProp,
-  StyleSheet,
   View,
   ViewStyle,
+  StyleSheet,
+  StyleProp,
+  AccessibilityState,
 } from 'react-native';
-
-import { getExtendedFabStyle, getFABColors, getFabStyle } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { $Omit, $RemoveChildren, ThemeProp } from '../../types';
-import { forwardRef } from '../../utils/forwardRef';
 import ActivityIndicator from '../ActivityIndicator';
+import Surface from '../Surface';
 import CrossFadeIcon from '../CrossFadeIcon';
 import Icon, { IconSource } from '../Icon';
-import Surface from '../Surface';
-import TouchableRipple from '../TouchableRipple/TouchableRipple';
 import Text from '../Typography/Text';
+import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import { black, white } from '../../styles/colors';
+import { withTheme } from '../../core/theming';
+import getContrastingColor from '../../utils/getContrastingColor';
+import type { $RemoveChildren } from '../../types';
 
-type FABSize = 'small' | 'medium' | 'large';
+getContrastingColor;
 
-type FABMode = 'flat' | 'elevated';
-
-type IconOrLabel =
-  | {
-      icon: IconSource;
-      label?: string;
-    }
-  | {
-      icon?: IconSource;
-      label: string;
-    };
-
-export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
-  // For `icon` and `label` props their types are duplicated due to the generation of documentation.
-  // Appropriate type for them is `IconOrLabel` contains the both union and intersection types.
+export type Props = $RemoveChildren<typeof Surface> & {
   /**
-   * Icon to display for the `FAB`. It's optional only if `label` is defined.
+   * Icon to display for the `FAB`.
    */
-  icon?: IconSource;
+  icon: IconSource;
   /**
-   * Optional label for extended `FAB`. It's optional only if `icon` is defined.
+   * Optional label for extended `FAB`.
    */
   label?: string;
   /**
@@ -64,8 +48,6 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
    */
   animated?: boolean;
   /**
-   *  @deprecated Deprecated in v.5x - use prop size="small".
-   *
    *  Whether FAB is mini-sized, used to create visual continuity with other elements. This has no effect if `label` is specified.
    */
   small?: boolean;
@@ -73,10 +55,6 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
    * Custom color for the icon and label of the `FAB`.
    */
   color?: string;
-  /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
   /**
    * Whether `FAB` is disabled. A disabled button is greyed out and `onPress` is not called on touch.
    */
@@ -92,60 +70,26 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Function to execute on long press.
    */
-  onLongPress?: (e: GestureResponderEvent) => void;
-  /**
-   * The number of milliseconds a user must touch the element before executing `onLongPress`.
-   */
-  delayLongPress?: number;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Size of the `FAB`.
-   * - `small` - FAB with small height (40).
-   * - `medium` - FAB with default medium height (56).
-   * - `large` - FAB with large height (96).
-   */
-  size?: FABSize;
-  /**
-   * Custom size for the `FAB`. This prop takes precedence over size prop
-   */
-  customSize?: number;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Mode of the `FAB`. You can change the mode to adjust the the shadow:
-   * - `flat` - button without a shadow.
-   * - `elevated` - button with a shadow.
-   */
-  mode?: FABMode;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Color mappings variant for combinations of container and icon colors.
-   */
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'surface';
-  /**
-   * Specifies the largest possible scale a label font can reach.
-   */
-  labelMaxFontSizeMultiplier?: number;
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  onLongPress?: () => void;
+  style?: StyleProp<ViewStyle>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  /**
-   * TestID used for testing purposes
-   */
+  theme: ReactNativePaper.Theme;
   testID?: string;
-  ref?: React.RefObject<View>;
-} & IconOrLabel;
+};
 
 /**
- * A floating action button represents the primary action on a screen. It appears in front of all screen content.
+ * A floating action button represents the primary action in an application.
+ *
+ * <div class="screenshots">
+ *   <img src="screenshots/fab-1.png" />
+ *   <img src="screenshots/fab-2.png" />
+ * </div>
  *
  * ## Usage
  * ```js
@@ -155,8 +99,9 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
  *
  * const MyComponent = () => (
  *   <FAB
- *     icon="plus"
  *     style={styles.fab}
+ *     small
+ *     icon="plus"
  *     onPress={() => console.log('Pressed')}
  *   />
  * );
@@ -173,100 +118,81 @@ export type Props = $Omit<$RemoveChildren<typeof Surface>, 'mode'> & {
  * export default MyComponent;
  * ```
  */
-const FAB = forwardRef<View, Props>(
-  (
-    {
-      icon,
-      label,
-      accessibilityLabel = label,
-      accessibilityState,
-      animated = true,
-      color: customColor,
-      rippleColor: customRippleColor,
-      disabled,
-      onPress,
-      onLongPress,
-      delayLongPress,
-      theme: themeOverrides,
-      style,
-      visible = true,
-      uppercase: uppercaseProp,
-      loading,
-      testID = 'fab',
-      size = 'medium',
-      customSize,
-      mode = 'elevated',
-      variant = 'primary',
-      labelMaxFontSizeMultiplier,
-      ...rest
-    }: Props,
-    ref
-  ) => {
-    const theme = useInternalTheme(themeOverrides);
-    const uppercase = uppercaseProp ?? !theme.isV3;
-    const { current: visibility } = React.useRef<Animated.Value>(
-      new Animated.Value(visible ? 1 : 0)
+const FAB = ({
+  small,
+  icon,
+  label,
+  accessibilityLabel = label,
+  accessibilityState,
+  animated = true,
+  color: customColor,
+  disabled,
+  onPress,
+  onLongPress,
+  theme,
+  style,
+  visible = true,
+  uppercase = true,
+  loading,
+  testID,
+  ...rest
+}: Props) => {
+  const { current: visibility } = React.useRef<Animated.Value>(
+    new Animated.Value(visible ? 1 : 0)
+  );
+  const { scale } = theme.animation;
+
+  React.useEffect(() => {
+    if (visible) {
+      Animated.timing(visibility, {
+        toValue: 1,
+        duration: 200 * scale,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(visibility, {
+        toValue: 0,
+        duration: 150 * scale,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible, scale, visibility]);
+
+  const IconComponent = animated ? CrossFadeIcon : Icon;
+
+  const disabledColor = color(theme.dark ? white : black)
+    .alpha(0.12)
+    .rgb()
+    .string();
+
+  const { backgroundColor = disabled ? disabledColor : theme.colors.accent } =
+    (StyleSheet.flatten(style) || {}) as ViewStyle;
+
+  let foregroundColor;
+
+  if (typeof customColor !== 'undefined') {
+    foregroundColor = customColor;
+  } else if (disabled) {
+    foregroundColor = color(theme.dark ? white : black)
+      .alpha(0.32)
+      .rgb()
+      .string();
+  } else {
+    foregroundColor = getContrastingColor(
+      backgroundColor,
+      white,
+      'rgba(0, 0, 0, .54)'
     );
-    const { isV3, animation } = theme;
-    const { scale } = animation;
+  }
 
-    React.useEffect(() => {
-      if (visible) {
-        Animated.timing(visibility, {
-          toValue: 1,
-          duration: 200 * scale,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        Animated.timing(visibility, {
-          toValue: 0,
-          duration: 150 * scale,
-          useNativeDriver: true,
-        }).start();
-      }
-    }, [visible, scale, visibility]);
+  const rippleColor = color(foregroundColor).alpha(0.32).rgb().string();
 
-    const IconComponent = animated ? CrossFadeIcon : Icon;
-
-    const fabStyle = getFabStyle({ customSize, size, theme });
-
-    const {
-      borderRadius = fabStyle.borderRadius,
-      backgroundColor: customBackgroundColor,
-    } = (StyleSheet.flatten(style) || {}) as ViewStyle;
-
-    const { backgroundColor, foregroundColor, rippleColor } = getFABColors({
-      theme,
-      variant,
-      disabled,
-      customColor,
-      customBackgroundColor,
-      customRippleColor,
-    });
-
-    const isLargeSize = size === 'large';
-    const isFlatMode = mode === 'flat';
-    const iconSize = isLargeSize ? 36 : 24;
-    const loadingIndicatorSize = isLargeSize ? 24 : 18;
-    const font = isV3 ? theme.fonts.labelLarge : theme.fonts.medium;
-
-    const extendedStyle = getExtendedFabStyle({ customSize, theme });
-    const textStyle = {
-      color: foregroundColor,
-      ...font,
-    };
-
-    const md3Elevation = isFlatMode || disabled ? 0 : 3;
-
-    const newAccessibilityState = { ...accessibilityState, disabled };
-
-    return (
-      <Surface
-        ref={ref}
-        {...rest}
-        style={[
+  return (
+    <Surface
+      {...rest}
+      style={
+        [
           {
-            borderRadius,
             backgroundColor,
             opacity: visibility,
             transform: [
@@ -275,71 +201,78 @@ const FAB = forwardRef<View, Props>(
               },
             ],
           },
-          !isV3 && styles.elevated,
-          !isV3 && disabled && styles.disabled,
+          styles.container,
+          disabled && styles.disabled,
           style,
-        ]}
-        pointerEvents={visible ? 'auto' : 'none'}
-        testID={`${testID}-container`}
-        {...(isV3 && { elevation: md3Elevation })}
+        ] as StyleProp<ViewStyle>
+      }
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      <TouchableRipple
+        borderless
+        onPress={onPress}
+        onLongPress={onLongPress}
+        rippleColor={rippleColor}
+        disabled={disabled}
+        accessibilityLabel={accessibilityLabel}
+        // @ts-expect-error We keep old a11y props for backwards compat with old RN versions
+        accessibilityTraits={disabled ? ['button', 'disabled'] : 'button'}
+        accessibilityComponentType="button"
+        accessibilityRole="button"
+        accessibilityState={{ ...accessibilityState, disabled }}
+        style={styles.touchable}
+        testID={testID}
       >
-        <TouchableRipple
-          borderless
-          onPress={onPress}
-          onLongPress={onLongPress}
-          delayLongPress={delayLongPress}
-          rippleColor={rippleColor}
-          disabled={disabled}
-          accessibilityLabel={accessibilityLabel}
-          accessibilityRole="button"
-          accessibilityState={newAccessibilityState}
-          testID={testID}
-          style={{ borderRadius }}
-          {...rest}
+        <View
+          style={[
+            styles.content,
+            label ? styles.extended : small ? styles.small : styles.standard,
+          ]}
+          pointerEvents="none"
         >
-          <View
-            style={[styles.content, label ? extendedStyle : fabStyle]}
-            testID={`${testID}-content`}
-            pointerEvents="none"
-          >
-            {icon && loading !== true ? (
-              <IconComponent
-                source={icon}
-                size={customSize ? customSize / 2 : iconSize}
-                color={foregroundColor}
-              />
-            ) : null}
-            {loading ? (
-              <ActivityIndicator
-                size={customSize ? customSize / 2 : loadingIndicatorSize}
-                color={foregroundColor}
-              />
-            ) : null}
-            {label ? (
-              <Text
-                variant="labelLarge"
-                selectable={false}
-                testID={`${testID}-text`}
-                style={[
-                  styles.label,
-                  uppercase && styles.uppercaseLabel,
-                  textStyle,
-                ]}
-                maxFontSizeMultiplier={labelMaxFontSizeMultiplier}
-              >
-                {label}
-              </Text>
-            ) : null}
-          </View>
-        </TouchableRipple>
-      </Surface>
-    );
-  }
-);
+          {icon && loading !== true ? (
+            <IconComponent source={icon} size={24} color={foregroundColor} />
+          ) : null}
+          {loading ? (
+            <ActivityIndicator size={18} color={foregroundColor} />
+          ) : null}
+          {label ? (
+            <Text
+              selectable={false}
+              style={[
+                styles.label,
+                uppercase && styles.uppercaseLabel,
+                { color: foregroundColor, ...theme.fonts.medium },
+              ]}
+            >
+              {label}
+            </Text>
+          ) : null}
+        </View>
+      </TouchableRipple>
+    </Surface>
+  );
+};
 
 const styles = StyleSheet.create({
-  elevated: {
+  container: {
+    borderRadius: 28,
     elevation: 6,
+  },
+  touchable: {
+    borderRadius: 28,
+  },
+  standard: {
+    height: 56,
+    width: 56,
+  },
+  small: {
+    height: 40,
+    width: 40,
+  },
+  extended: {
+    height: 48,
+    paddingHorizontal: 16,
   },
   content: {
     flexDirection: 'row',
@@ -357,7 +290,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FAB;
+export default withTheme(FAB);
 
 // @component-docs ignore-next-line
-export { FAB };
+const FABWithTheme = withTheme(FAB);
+// @component-docs ignore-next-line
+export { FABWithTheme as FAB };

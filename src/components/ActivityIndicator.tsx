@@ -8,9 +8,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-
-import { useInternalTheme } from '../core/theming';
-import type { ThemeProp } from '../types';
+import { withTheme } from '../core/theming';
 
 export type Props = React.ComponentPropsWithRef<typeof View> & {
   /**
@@ -33,7 +31,7 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 const DURATION = 2400;
@@ -42,13 +40,17 @@ const DURATION = 2400;
  * Activity indicator is used to present progress of some activity in the app.
  * It can be used as a drop-in for the ActivityIndicator shipped with React Native.
  *
+ * <div class="screenshots">
+ *   <img src="screenshots/activity-indicator.gif" style="width: 100px;" />
+ * </div>
+ *
  * ## Usage
  * ```js
  * import * as React from 'react';
- * import { ActivityIndicator, MD2Colors } from 'react-native-paper';
+ * import { ActivityIndicator, Colors } from 'react-native-paper';
  *
  * const MyComponent = () => (
- *   <ActivityIndicator animating={true} color={MD2Colors.red800} />
+ *   <ActivityIndicator animating={true} color={Colors.red800} />
  * );
  *
  * export default MyComponent;
@@ -60,10 +62,9 @@ const ActivityIndicator = ({
   hidesWhenStopped = true,
   size: indicatorSize = 'small',
   style,
-  theme: themeOverrides,
+  theme,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const { current: timer } = React.useRef<Animated.Value>(
     new Animated.Value(0)
   );
@@ -130,7 +131,7 @@ const ActivityIndicator = ({
     }
   }, [animating, fade, hidesWhenStopped, startRotation, scale, timer]);
 
-  const color = indicatorColor || theme.colors?.primary;
+  const color = indicatorColor || theme.colors.primary;
   const size =
     typeof indicatorSize === 'string'
       ? indicatorSize === 'small'
@@ -251,4 +252,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActivityIndicator;
+export default withTheme(ActivityIndicator);

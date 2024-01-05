@@ -1,16 +1,8 @@
 import * as React from 'react';
-import type {
-  GestureResponderEvent,
-  StyleProp,
-  ViewStyle,
-  View,
-  Animated,
-} from 'react-native';
-
 import type { $Omit } from './../../types';
 import AppbarAction from './AppbarAction';
 import AppbarBackIcon from './AppbarBackIcon';
-import { forwardRef } from '../../utils/forwardRef';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 export type Props = $Omit<
   React.ComponentPropsWithoutRef<typeof AppbarAction>,
@@ -35,18 +27,32 @@ export type Props = $Omit<
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
-  ref?: React.RefObject<View>;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 /**
  * A component used to display a back button in the appbar.
  *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/appbar-backaction-android.png" />
+ *     <figcaption>Android</figcaption>
+ *   </figure>
+ * </div>
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/appbar-backaction-ios.png" />
+ *     <figcaption>iOS</figcaption>
+ *   </figure>
+ * </div>
+ *
  * ## Usage
  * ```js
  * import * as React from 'react';
  * import { Appbar } from 'react-native-paper';
+ *
  *
  * const MyComponent = () => (
  *     <Appbar.Header>
@@ -57,16 +63,12 @@ export type Props = $Omit<
  * export default MyComponent;
  * ```
  */
-const AppbarBackAction = forwardRef<View, Props>(
-  ({ accessibilityLabel = 'Back', ...rest }: Props, ref) => (
-    <AppbarAction
-      accessibilityLabel={accessibilityLabel}
-      {...rest}
-      icon={AppbarBackIcon}
-      isLeading
-      ref={ref}
-    />
-  )
+const AppbarBackAction = ({ accessibilityLabel = 'Back', ...rest }: Props) => (
+  <AppbarAction
+    accessibilityLabel={accessibilityLabel}
+    {...rest}
+    icon={AppbarBackIcon}
+  />
 );
 
 AppbarBackAction.displayName = 'Appbar.BackAction';

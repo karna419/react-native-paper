@@ -1,11 +1,10 @@
 import * as React from 'react';
-import { GestureResponderEvent, StyleSheet, View } from 'react-native';
-
-import { getSelectionControlIOSColor } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { $RemoveChildren, ThemeProp } from '../../types';
+import { StyleSheet, View } from 'react-native';
+import color from 'color';
 import MaterialCommunityIcon from '../MaterialCommunityIcon';
 import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import { withTheme } from '../../core/theming';
+import type { $RemoveChildren } from '../../types';
 
 export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
@@ -19,7 +18,7 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Custom color for checkbox.
    */
@@ -27,7 +26,7 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -38,27 +37,42 @@ export type Props = $RemoveChildren<typeof TouchableRipple> & {
  * Checkboxes allow the selection of multiple options from a set.
  * This component follows platform guidelines for iOS, but can be used
  * on any platform.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img src="screenshots/checkbox-enabled.ios.png" />
+ *     <figcaption>Enabled</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/checkbox-disabled.ios.png" />
+ *     <figcaption>Disabled</figcaption>
+ *   </figure>
+ * </div>
  */
 const CheckboxIOS = ({
   status,
   disabled,
   onPress,
-  theme: themeOverrides,
+  theme,
   testID,
   ...rest
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const checked = status === 'checked';
   const indeterminate = status === 'indeterminate';
 
-  const { checkedColor, rippleColor } = getSelectionControlIOSColor({
-    theme,
-    disabled,
-    customColor: rest.color,
-  });
+  const checkedColor = disabled
+    ? theme.colors.disabled
+    : rest.color || theme.colors.accent;
+
+  let rippleColor;
+
+  if (disabled) {
+    rippleColor = color(theme.colors.text).alpha(0.16).rgb().string();
+  } else {
+    rippleColor = color(checkedColor).fade(0.32).rgb().string();
+  }
 
   const icon = indeterminate ? 'minus' : 'check';
-  const opacity = indeterminate || checked ? 1 : 0;
 
   return (
     <TouchableRipple
@@ -67,14 +81,16 @@ const CheckboxIOS = ({
       rippleColor={rippleColor}
       onPress={onPress}
       disabled={disabled}
+      // @ts-expect-error We keep old a11y props for backwards compat with old RN versions
+      accessibilityTraits={disabled ? ['button', 'disabled'] : 'button'}
+      accessibilityComponentType="button"
       accessibilityRole="checkbox"
       accessibilityState={{ disabled, checked }}
       accessibilityLiveRegion="polite"
       style={styles.container}
       testID={testID}
-      theme={theme}
     >
-      <View style={{ opacity }}>
+      <View style={{ opacity: indeterminate || checked ? 1 : 0 }}>
         <MaterialCommunityIcon
           allowFontScaling={false}
           name={icon}
@@ -96,7 +112,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CheckboxIOS;
+export default withTheme(CheckboxIOS);
 
 // @component-docs ignore-next-line
-export { CheckboxIOS };
+const CheckboxIOSWithTheme = withTheme(CheckboxIOS);
+// @component-docs ignore-next-line
+export { CheckboxIOSWithTheme as CheckboxIOS };

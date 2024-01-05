@@ -1,31 +1,19 @@
 import * as React from 'react';
-import {
-  Animated,
-  Platform,
-  StyleProp,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
-
-import DialogActions from './DialogActions';
-import DialogContent from './DialogContent';
-import DialogIcon from './DialogIcon';
-import DialogScrollArea from './DialogScrollArea';
-import DialogTitle from './DialogTitle';
-import { useInternalTheme } from '../../core/theming';
-import overlay from '../../styles/overlay';
-import type { ThemeProp } from '../../types';
+import { StyleSheet, Platform, StyleProp, ViewStyle } from 'react-native';
 import Modal from '../Modal';
+import DialogContent from './DialogContent';
+import DialogActions from './DialogActions';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import DialogTitle, { DialogTitle as _DialogTitle } from './DialogTitle';
+import DialogScrollArea from './DialogScrollArea';
+import { withTheme } from '../../core/theming';
+import overlay from '../../styles/overlay';
 
 export type Props = {
   /**
    * Determines whether clicking outside the dialog dismiss it.
    */
   dismissable?: boolean;
-  /**
-   * Determines whether clicking Android hardware back button dismiss dialog.
-   */
-  dismissableBackButton?: boolean;
   /**
    * Callback that is called when the user dismisses the dialog.
    */
@@ -38,28 +26,29 @@ export type Props = {
    * Content of the `Dialog`.
    */
   children: React.ReactNode;
-  style?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  style?: StyleProp<ViewStyle>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  /**
-   * testID to be used on tests.
-   */
-  testID?: string;
+  theme: ReactNativePaper.Theme;
 };
 
 const DIALOG_ELEVATION: number = 24;
 
 /**
  * Dialogs inform users about a specific task and may contain critical information, require decisions, or involve multiple tasks.
- * To render the `Dialog` above other components, you'll need to wrap it with the [`Portal`](../../Portal) component.
+ * To render the `Dialog` above other components, you'll need to wrap it with the [`Portal`](portal.html) component.
+ *
+ *  <div class="screenshots">
+ *   <img class="medium" src="screenshots/dialog-1.png" />
+ *   <img class="medium" src="screenshots/dialog-2.png" />
+ * </div>
  *
  * ## Usage
  * ```js
  * import * as React from 'react';
  * import { View } from 'react-native';
- * import { Button, Dialog, Portal, PaperProvider, Text } from 'react-native-paper';
+ * import { Button, Paragraph, Dialog, Portal, Provider } from 'react-native-paper';
  *
  * const MyComponent = () => {
  *   const [visible, setVisible] = React.useState(false);
@@ -69,14 +58,14 @@ const DIALOG_ELEVATION: number = 24;
  *   const hideDialog = () => setVisible(false);
  *
  *   return (
- *     <PaperProvider>
+ *     <Provider>
  *       <View>
  *         <Button onPress={showDialog}>Show Dialog</Button>
  *         <Portal>
  *           <Dialog visible={visible} onDismiss={hideDialog}>
  *             <Dialog.Title>Alert</Dialog.Title>
  *             <Dialog.Content>
- *               <Text variant="bodyMedium">This is simple dialog</Text>
+ *               <Paragraph>This is simple dialog</Paragraph>
  *             </Dialog.Content>
  *             <Dialog.Actions>
  *               <Button onPress={hideDialog}>Done</Button>
@@ -84,7 +73,7 @@ const DIALOG_ELEVATION: number = 24;
  *           </Dialog>
  *         </Portal>
  *       </View>
- *     </PaperProvider>
+ *     </Provider>
  *   );
  * };
  *
@@ -94,69 +83,46 @@ const DIALOG_ELEVATION: number = 24;
 const Dialog = ({
   children,
   dismissable = true,
-  dismissableBackButton = dismissable,
   onDismiss,
   visible = false,
   style,
-  theme: themeOverrides,
-  testID,
-}: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { isV3, dark, mode, colors, roundness } = theme;
-  const borderRadius = (isV3 ? 7 : 1) * roundness;
+  theme,
+}: Props) => (
+  <Modal
+    dismissable={dismissable}
+    onDismiss={onDismiss}
+    visible={visible}
+    contentContainerStyle={[
+      {
+        borderRadius: theme.roundness,
+        backgroundColor:
+          theme.dark && theme.mode === 'adaptive'
+            ? overlay(DIALOG_ELEVATION, theme.colors.surface)
+            : theme.colors.surface,
+      },
+      styles.container,
+      style,
+    ]}
+    theme={theme}
+  >
+    {React.Children.toArray(children)
+      .filter((child) => child != null && typeof child !== 'boolean')
+      .map((child, i) => {
+        if (
+          i === 0 &&
+          React.isValidElement(child) &&
+          child.type === DialogContent
+        ) {
+          // Dialog content is the first item, so we add a top padding
+          return React.cloneElement(child, {
+            style: [{ paddingTop: 24 }, child.props.style],
+          });
+        }
 
-  const backgroundColorV2 =
-    dark && mode === 'adaptive'
-      ? overlay(DIALOG_ELEVATION, colors?.surface)
-      : colors?.surface;
-  const backgroundColor = isV3
-    ? theme.colors.elevation.level3
-    : backgroundColorV2;
-
-  return (
-    <Modal
-      dismissable={dismissable}
-      dismissableBackButton={dismissableBackButton}
-      onDismiss={onDismiss}
-      visible={visible}
-      contentContainerStyle={[
-        {
-          borderRadius,
-          backgroundColor,
-        },
-        styles.container,
-        style,
-      ]}
-      theme={theme}
-      testID={testID}
-    >
-      {React.Children.toArray(children)
-        .filter((child) => child != null && typeof child !== 'boolean')
-        .map((child, i) => {
-          if (isV3) {
-            if (i === 0 && React.isValidElement(child)) {
-              return React.cloneElement(child as React.ReactElement<any>, {
-                style: [{ marginTop: 24 }, child.props.style],
-              });
-            }
-          }
-
-          if (
-            i === 0 &&
-            React.isValidElement(child) &&
-            child.type === DialogContent
-          ) {
-            // Dialog content is the first item, so we add a top padding
-            return React.cloneElement(child as React.ReactElement<any>, {
-              style: [{ paddingTop: 24 }, child.props.style],
-            });
-          }
-
-          return child;
-        })}
-    </Modal>
-  );
-};
+        return child;
+      })}
+  </Modal>
+);
 
 // @component ./DialogContent.tsx
 Dialog.Content = DialogContent;
@@ -166,8 +132,6 @@ Dialog.Actions = DialogActions;
 Dialog.Title = DialogTitle;
 // @component ./DialogScrollArea.tsx
 Dialog.ScrollArea = DialogScrollArea;
-// @component ./DialogIcon.tsx
-Dialog.Icon = DialogIcon;
 
 const styles = StyleSheet.create({
   container: {
@@ -185,4 +149,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Dialog;
+export default withTheme(Dialog);

@@ -1,33 +1,29 @@
 import * as React from 'react';
 import {
   Animated,
+  BackHandler,
   Easing,
   StyleProp,
   StyleSheet,
-  Pressable,
-  View,
+  TouchableWithoutFeedback,
   ViewStyle,
+  View,
+  NativeEventSubscription,
 } from 'react-native';
-
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useLatestCallback from 'use-latest-callback';
-
+import {
+  getStatusBarHeight,
+  getBottomSpace,
+} from 'react-native-iphone-x-helper';
 import Surface from './Surface';
-import { useInternalTheme } from '../core/theming';
-import type { ThemeProp } from '../types';
-import { addEventListener } from '../utils/addEventListener';
-import { BackHandler } from '../utils/BackHandler/BackHandler';
+import { withTheme } from '../core/theming';
 import useAnimatedValue from '../utils/useAnimatedValue';
+import { addEventListener } from '../utils/addEventListener';
 
 export type Props = {
   /**
    * Determines whether clicking outside the modal dismiss it.
    */
   dismissable?: boolean;
-  /**
-   * Determines whether clicking Android hardware back button dismiss dialog.
-   */
-  dismissableBackButton?: boolean;
   /**
    * Callback that is called when the user dismisses the modal.
    */
@@ -47,7 +43,7 @@ export type Props = {
   /**
    * Style for the content of the modal
    */
-  contentContainerStyle?: Animated.WithAnimatedValue<StyleProp<ViewStyle>>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
   /**
    * Style for the wrapper of the modal.
    * Use this prop to change the default wrapper style or to override safe area insets with marginTop and marginBottom.
@@ -56,24 +52,28 @@ export type Props = {
   /**
    * @optional
    */
-  theme?: ThemeProp;
-  /**
-   * testID to be used on tests.
-   */
+  theme: ReactNativePaper.Theme;
   testID?: string;
 };
 
 const DEFAULT_DURATION = 220;
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const TOP_INSET = getStatusBarHeight(true);
+const BOTTOM_INSET = getBottomSpace();
 
 /**
  * The Modal component is a simple way to present content above an enclosing view.
- * To render the `Modal` above other components, you'll need to wrap it with the [`Portal`](./Portal) component.
+ * To render the `Modal` above other components, you'll need to wrap it with the [`Portal`](portal.html) component.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/modal.gif" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
  * import * as React from 'react';
- * import { Modal, Portal, Text, Button, PaperProvider } from 'react-native-paper';
+ * import { Modal, Portal, Text, Button, Provider } from 'react-native-paper';
  *
  * const MyComponent = () => {
  *   const [visible, setVisible] = React.useState(false);
@@ -83,7 +83,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  *   const containerStyle = {backgroundColor: 'white', padding: 20};
  *
  *   return (
- *     <PaperProvider>
+ *     <Provider>
  *       <Portal>
  *         <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={containerStyle}>
  *           <Text>Example Modal.  Click outside this area to dismiss.</Text>
@@ -92,7 +92,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  *       <Button style={{marginTop: 30}} onPress={showModal}>
  *         Show
  *       </Button>
- *     </PaperProvider>
+ *     </Provider>
  *   );
  * };
  *
@@ -101,28 +101,22 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  */
 function Modal({
   dismissable = true,
-  dismissableBackButton = dismissable,
   visible = false,
   overlayAccessibilityLabel = 'Close modal',
-  onDismiss = () => {},
+  onDismiss,
   children,
   contentContainerStyle,
   style,
-  theme: themeOverrides,
-  testID = 'modal',
+  theme,
+  testID,
 }: Props) {
-  const theme = useInternalTheme(themeOverrides);
   const visibleRef = React.useRef(visible);
 
   React.useEffect(() => {
     visibleRef.current = visible;
   });
 
-  const onDismissCallback = useLatestCallback(onDismiss);
-
-  const { scale } = theme.animation;
-
-  const { top, bottom } = useSafeAreaInsets();
+  const { colors, animation } = theme;
 
   const opacity = useAnimatedValue(visible ? 1 : 0);
 
@@ -132,16 +126,47 @@ function Modal({
     setRendered(true);
   }
 
-  const showModal = React.useCallback(() => {
+  const handleBack = () => {
+    if (dismissable) {
+      hideModal();
+    }
+    return true;
+  };
+
+  const subscription = React.useRef<NativeEventSubscription | undefined>(
+    undefined
+  );
+
+  const showModal = () => {
+    subscription.current?.remove();
+    subscription.current = addEventListener(
+      BackHandler,
+      'hardwareBackPress',
+      handleBack
+    );
+
+    const { scale } = animation;
+
     Animated.timing(opacity, {
       toValue: 1,
       duration: scale * DEFAULT_DURATION,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [opacity, scale]);
+  };
 
-  const hideModal = React.useCallback(() => {
+  const removeListeners = () => {
+    if (subscription.current?.remove) {
+      subscription.current?.remove();
+    } else {
+      BackHandler.removeEventListener('hardwareBackPress', handleBack);
+    }
+  };
+
+  const hideModal = () => {
+    removeListeners();
+    const { scale } = animation;
+
     Animated.timing(opacity, {
       toValue: 0,
       duration: scale * DEFAULT_DURATION,
@@ -152,8 +177,8 @@ function Modal({
         return;
       }
 
-      if (visible) {
-        onDismissCallback();
+      if (visible && onDismiss) {
+        onDismiss();
       }
 
       if (visibleRef.current) {
@@ -162,28 +187,7 @@ function Modal({
         setRendered(false);
       }
     });
-  }, [onDismissCallback, opacity, scale, showModal, visible]);
-
-  React.useEffect(() => {
-    if (!visible) {
-      return undefined;
-    }
-
-    const onHardwareBackPress = () => {
-      if (dismissable || dismissableBackButton) {
-        hideModal();
-      }
-
-      return true;
-    };
-
-    const subscription = addEventListener(
-      BackHandler,
-      'hardwareBackPress',
-      onHardwareBackPress
-    );
-    return () => subscription.remove();
-  }, [dismissable, dismissableBackButton, hideModal, visible]);
+  };
 
   const prevVisible = React.useRef<boolean | null>(null);
 
@@ -198,6 +202,10 @@ function Modal({
     prevVisible.current = visible;
   });
 
+  React.useEffect(() => {
+    return removeListeners;
+  }, []);
+
   if (!rendered) return null;
 
   return (
@@ -209,34 +217,37 @@ function Modal({
       onAccessibilityEscape={hideModal}
       testID={testID}
     >
-      <AnimatedPressable
+      <TouchableWithoutFeedback
         accessibilityLabel={overlayAccessibilityLabel}
         accessibilityRole="button"
         disabled={!dismissable}
         onPress={dismissable ? hideModal : undefined}
         importantForAccessibility="no"
-        style={[
-          styles.backdrop,
-          {
-            backgroundColor: theme.colors?.backdrop,
-            opacity,
-          },
-        ]}
-        testID={`${testID}-backdrop`}
-      />
+      >
+        <Animated.View
+          testID={`${testID}-backdrop`}
+          style={[
+            styles.backdrop,
+            { backgroundColor: colors.backdrop, opacity },
+          ]}
+        />
+      </TouchableWithoutFeedback>
       <View
         style={[
           styles.wrapper,
-          { marginTop: top, marginBottom: bottom },
+          { marginTop: TOP_INSET, marginBottom: BOTTOM_INSET },
           style,
         ]}
         pointerEvents="box-none"
-        testID={`${testID}-wrapper`}
       >
         <Surface
-          testID={`${testID}-surface`}
-          theme={theme}
-          style={[{ opacity }, styles.content, contentContainerStyle]}
+          style={
+            [
+              { opacity },
+              styles.content,
+              contentContainerStyle,
+            ] as StyleProp<ViewStyle>
+          }
         >
           {children}
         </Surface>
@@ -245,7 +256,7 @@ function Modal({
   );
 }
 
-export default Modal;
+export default withTheme(Modal);
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -255,7 +266,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
   },
-  // eslint-disable-next-line react-native/no-color-literals
   content: {
     backgroundColor: 'transparent',
     justifyContent: 'center',

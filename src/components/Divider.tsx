@@ -1,37 +1,30 @@
 import * as React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-
 import color from 'color';
-
-import { useInternalTheme } from '../core/theming';
-import { black, white } from '../styles/themes/v2/colors';
-import type { $RemoveChildren, ThemeProp } from '../types';
+import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
+import { withTheme } from '../core/theming';
+import { black, white } from '../styles/colors';
+import type { $RemoveChildren } from '../types';
 
 export type Props = $RemoveChildren<typeof View> & {
   /**
-   * @renamed Renamed from 'inset' to 'leftInset` in v5.x
-   * Whether divider has a left inset.
+   *  Whether divider has a left inset.
    */
-  leftInset?: boolean;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *  Whether divider has a horizontal inset on both sides.
-   */
-  horizontalInset?: boolean;
-  /**
-   * @supported Available in v5.x with theme version 3
-   *  Whether divider should be bolded.
-   */
-  bold?: boolean;
+  inset?: boolean;
   style?: StyleProp<ViewStyle>;
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * A divider is a thin, lightweight separator that groups content in lists and page layouts.
+ *
+ * <div class="screenshots">
+ *  <figure>
+ *    <img class="medium" src="screenshots/divider.png" />
+ *  </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -51,32 +44,14 @@ export type Props = $RemoveChildren<typeof View> & {
  * export default MyComponent;
  * ```
  */
-const Divider = ({
-  leftInset,
-  horizontalInset = false,
-  style,
-  theme: themeOverrides,
-  bold = false,
-  ...rest
-}: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { dark: isDarkTheme, isV3 } = theme;
-
-  const dividerColor = isV3
-    ? theme.colors.outlineVariant
-    : color(isDarkTheme ? white : black)
-        .alpha(0.12)
-        .rgb()
-        .string();
-
+const Divider = ({ inset, style, theme, ...rest }: Props) => {
+  const { dark: isDarkTheme } = theme;
   return (
     <View
       {...rest}
       style={[
-        { height: StyleSheet.hairlineWidth, backgroundColor: dividerColor },
-        leftInset && (isV3 ? styles.v3LeftInset : styles.leftInset),
-        isV3 && horizontalInset && styles.horizontalInset,
-        isV3 && bold && styles.bold,
+        isDarkTheme ? styles.dark : styles.light,
+        inset && styles.inset,
         style,
       ]}
     />
@@ -84,19 +59,17 @@ const Divider = ({
 };
 
 const styles = StyleSheet.create({
-  leftInset: {
+  light: {
+    backgroundColor: color(black).alpha(0.12).rgb().string(),
+    height: StyleSheet.hairlineWidth,
+  },
+  dark: {
+    backgroundColor: color(white).alpha(0.12).rgb().string(),
+    height: StyleSheet.hairlineWidth,
+  },
+  inset: {
     marginLeft: 72,
-  },
-  v3LeftInset: {
-    marginLeft: 16,
-  },
-  horizontalInset: {
-    marginLeft: 16,
-    marginRight: 16,
-  },
-  bold: {
-    height: 1,
   },
 });
 
-export default Divider;
+export default withTheme(Divider);

@@ -1,10 +1,8 @@
 import * as React from 'react';
-import { GestureResponderEvent, Platform } from 'react-native';
-
-import CheckboxAndroid from './CheckboxAndroid';
+import { Platform } from 'react-native';
 import CheckboxIOS from './CheckboxIOS';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
+import CheckboxAndroid from './CheckboxAndroid';
+import { withTheme } from '../../core/theming';
 
 export type Props = {
   /**
@@ -18,7 +16,7 @@ export type Props = {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Custom color for unchecked checkbox.
    */
@@ -30,7 +28,7 @@ export type Props = {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -39,6 +37,25 @@ export type Props = {
 
 /**
  * Checkboxes allow the selection of multiple options from a set.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img src="screenshots/checkbox-enabled.android.png" />
+ *     <figcaption>Android (enabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/checkbox-disabled.android.png" />
+ *     <figcaption>Android (disabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/checkbox-enabled.ios.png" />
+ *     <figcaption>iOS (enabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/checkbox-disabled.ios.png" />
+ *     <figcaption>iOS (disabled)</figcaption>
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -61,18 +78,16 @@ export type Props = {
  * export default MyComponent;
  * ```
  */
-const Checkbox = ({ theme: themeOverrides, ...props }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  return Platform.OS === 'ios' ? (
-    <CheckboxIOS {...props} theme={theme} />
+const Checkbox = (props: Props) =>
+  Platform.OS === 'ios' ? (
+    <CheckboxIOS {...props} />
   ) : (
-    <CheckboxAndroid {...props} theme={theme} />
+    <CheckboxAndroid {...props} />
   );
-};
 
-export default Checkbox;
+export default withTheme(Checkbox);
 
 // @component-docs ignore-next-line
-const CheckboxWithTheme = Checkbox;
+const CheckboxWithTheme = withTheme(Checkbox);
 // @component-docs ignore-next-line
 export { CheckboxWithTheme as Checkbox };

@@ -1,26 +1,20 @@
+import color from 'color';
 import * as React from 'react';
 import {
-  ColorValue,
-  GestureResponderEvent,
-  I18nManager,
-  NativeSyntheticEvent,
-  StyleProp,
-  StyleSheet,
-  TextStyle,
-  TextLayoutEventData,
   View,
-  ViewProps,
   ViewStyle,
+  StyleSheet,
+  StyleProp,
+  TextStyle,
+  I18nManager,
+  GestureResponderEvent,
 } from 'react-native';
+import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import MaterialCommunityIcon from '../MaterialCommunityIcon';
+import Text from '../Typography/Text';
+import { withTheme } from '../../core/theming';
 
 import { ListAccordionGroupContext } from './ListAccordionGroup';
-import type { Style } from './utils';
-import { getAccordionColors, getLeftStyles } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
-import MaterialCommunityIcon from '../MaterialCommunityIcon';
-import TouchableRipple from '../TouchableRipple/TouchableRipple';
-import Text from '../Typography/Text';
 
 export type Props = {
   /**
@@ -34,7 +28,7 @@ export type Props = {
   /**
    * Callback which returns a React element to display on the left side.
    */
-  left?: (props: { color: string; style: Style }) => React.ReactNode;
+  left?: (props: { color: string }) => React.ReactNode;
   /**
    * Callback which returns a React element to display on the right side.
    */
@@ -48,15 +42,11 @@ export type Props = {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Function to execute on long press.
    */
   onLongPress?: (e: GestureResponderEvent) => void;
-  /**
-   * The number of milliseconds a user must touch the element before executing `onLongPress`.
-   */
-  delayLongPress?: number;
   /**
    * Content of the section.
    */
@@ -64,7 +54,7 @@ export type Props = {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * Style that is passed to the wrapping TouchableRipple element.
    */
@@ -78,10 +68,6 @@ export type Props = {
    */
   descriptionStyle?: StyleProp<TextStyle>;
   /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
-  /**
    * Truncate Title text such that the total number of lines does not
    * exceed this number.
    */
@@ -91,14 +77,6 @@ export type Props = {
    * exceed this number.
    */
   descriptionNumberOfLines?: number;
-  /**
-   * Specifies the largest possible scale a title font can reach.
-   */
-  titleMaxFontSizeMultiplier?: number;
-  /**
-   * Specifies the largest possible scale a description font can reach.
-   */
-  descriptionMaxFontSizeMultiplier?: number;
   /**
    * Id is used for distinguishing specific accordion when using List.AccordionGroup. Property is required when using List.AccordionGroup and has no impact on behavior when using standalone List.Accordion.
    */
@@ -111,14 +89,16 @@ export type Props = {
    * Accessibility label for the TouchableRipple. This is read by the screen reader when the user taps the touchable.
    */
   accessibilityLabel?: string;
-  /**
-   * `pointerEvents` passed to the `View` container
-   */
-  pointerEvents?: ViewProps['pointerEvents'];
 };
 
 /**
  * A component used to display an expandable list item.
+ *
+ * <div class="screenshots">
+ *   <img class="medium" src="screenshots/list-accordion-1.png" />
+ *   <img class="medium" src="screenshots/list-accordion-2.png" />
+ *   <img class="medium" src="screenshots/list-accordion-3.png" />
+ * </div>
  *
  * ## Usage
  * ```js
@@ -160,42 +140,25 @@ const ListAccordion = ({
   title,
   description,
   children,
-  theme: themeOverrides,
+  theme,
   titleStyle,
   descriptionStyle,
   titleNumberOfLines = 1,
   descriptionNumberOfLines = 2,
-  rippleColor: customRippleColor,
   style,
   id,
   testID,
   onPress,
   onLongPress,
-  delayLongPress,
   expanded: expandedProp,
   accessibilityLabel,
-  pointerEvents = 'none',
-  titleMaxFontSizeMultiplier,
-  descriptionMaxFontSizeMultiplier,
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
   const [expanded, setExpanded] = React.useState<boolean>(
     expandedProp || false
   );
-  const [alignToTop, setAlignToTop] = React.useState(false);
 
-  const onDescriptionTextLayout = (
-    event: NativeSyntheticEvent<TextLayoutEventData>
-  ) => {
-    if (!theme.isV3) {
-      return;
-    }
-    const { nativeEvent } = event;
-    setAlignToTop(nativeEvent.lines.length >= 2);
-  };
-
-  const handlePressAction = (e: GestureResponderEvent) => {
-    onPress?.(e);
+  const handlePressAction = () => {
+    onPress?.();
 
     if (expandedProp === undefined) {
       // Only update state of the `expanded` prop was not passed
@@ -204,10 +167,13 @@ const ListAccordion = ({
     }
   };
 
+  const titleColor = color(theme.colors.text).alpha(0.87).rgb().string();
+  const descriptionColor = color(theme.colors.text).alpha(0.54).rgb().string();
+
   const expandedInternal = expandedProp !== undefined ? expandedProp : expanded;
 
   const groupContext = React.useContext(ListAccordionGroupContext);
-  if (groupContext !== null && (id === undefined || id === null || id === '')) {
+  if (groupContext !== null && !id) {
     throw new Error(
       'List.Accordion is used inside a List.AccordionGroup without specifying an id prop.'
     );
@@ -215,58 +181,44 @@ const ListAccordion = ({
   const isExpanded = groupContext
     ? groupContext.expandedId === id
     : expandedInternal;
-
-  const { titleColor, descriptionColor, titleTextColor, rippleColor } =
-    getAccordionColors({
-      theme,
-      isExpanded,
-      customRippleColor,
-    });
-
   const handlePress =
     groupContext && id !== undefined
       ? () => groupContext.onAccordionPress(id)
       : handlePressAction;
   return (
     <View>
-      <View style={{ backgroundColor: theme?.colors?.background }}>
+      <View style={{ backgroundColor: theme.colors.background }}>
         <TouchableRipple
-          style={[theme.isV3 ? styles.containerV3 : styles.container, style]}
+          style={[styles.container, style]}
           onPress={handlePress}
           onLongPress={onLongPress}
-          delayLongPress={delayLongPress}
-          rippleColor={rippleColor}
+          // @ts-expect-error We keep old a11y props for backwards compat with old RN versions
+          accessibilityTraits="button"
+          accessibilityComponentType="button"
           accessibilityRole="button"
           accessibilityState={{ expanded: isExpanded }}
           accessibilityLabel={accessibilityLabel}
           testID={testID}
-          theme={theme}
+          delayPressIn={0}
           borderless
         >
-          <View
-            style={theme.isV3 ? styles.rowV3 : styles.row}
-            pointerEvents={pointerEvents}
-          >
+          <View style={styles.row} pointerEvents="none">
             {left
               ? left({
-                  color: isExpanded ? theme.colors?.primary : descriptionColor,
-                  style: getLeftStyles(alignToTop, description, theme.isV3),
+                  color: isExpanded ? theme.colors.primary : descriptionColor,
                 })
               : null}
-            <View
-              style={[theme.isV3 ? styles.itemV3 : styles.item, styles.content]}
-            >
+            <View style={[styles.item, styles.content]}>
               <Text
                 selectable={false}
                 numberOfLines={titleNumberOfLines}
                 style={[
                   styles.title,
                   {
-                    color: titleTextColor,
+                    color: isExpanded ? theme.colors.primary : titleColor,
                   },
                   titleStyle,
                 ]}
-                maxFontSizeMultiplier={titleMaxFontSizeMultiplier}
               >
                 {title}
               </Text>
@@ -281,8 +233,6 @@ const ListAccordion = ({
                     },
                     descriptionStyle,
                   ]}
-                  onTextLayout={onDescriptionTextLayout}
-                  maxFontSizeMultiplier={descriptionMaxFontSizeMultiplier}
                 >
                   {description}
                 </Text>
@@ -298,9 +248,9 @@ const ListAccordion = ({
               ) : (
                 <MaterialCommunityIcon
                   name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  color={theme.isV3 ? descriptionColor : titleColor}
+                  color={titleColor}
                   size={24}
-                  direction={I18nManager.getConstants().isRTL ? 'rtl' : 'ltr'}
+                  direction={I18nManager.isRTL ? 'rtl' : 'ltr'}
                 />
               )}
             </View>
@@ -316,12 +266,8 @@ const ListAccordion = ({
               !child.props.left &&
               !child.props.right
             ) {
-              return React.cloneElement(child as React.ReactElement<any>, {
-                style: [
-                  theme.isV3 ? styles.childV3 : styles.child,
-                  child.props.style,
-                ],
-                theme,
+              return React.cloneElement(child, {
+                style: [styles.child, child.props.style],
               });
             }
 
@@ -338,17 +284,9 @@ const styles = StyleSheet.create({
   container: {
     padding: 8,
   },
-  containerV3: {
-    paddingVertical: 8,
-    paddingRight: 24,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  rowV3: {
-    flexDirection: 'row',
-    marginVertical: 6,
   },
   multiline: {
     height: 40,
@@ -362,17 +300,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   item: {
-    marginVertical: 6,
-    paddingLeft: 8,
-  },
-  itemV3: {
-    paddingLeft: 16,
+    margin: 8,
   },
   child: {
     paddingLeft: 64,
-  },
-  childV3: {
-    paddingLeft: 40,
   },
   content: {
     flex: 1,
@@ -380,4 +311,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ListAccordion;
+export default withTheme(ListAccordion);

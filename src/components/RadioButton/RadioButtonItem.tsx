@@ -1,23 +1,19 @@
 import * as React from 'react';
 import {
-  ColorValue,
-  GestureResponderEvent,
-  StyleProp,
-  StyleSheet,
-  TextStyle,
   View,
+  StyleSheet,
+  StyleProp,
   ViewStyle,
+  TextStyle,
 } from 'react-native';
-
-import RadioButton from './RadioButton';
-import RadioButtonAndroid from './RadioButtonAndroid';
+import { withTheme } from '../../core/theming';
 import { RadioButtonContext, RadioButtonContextType } from './RadioButtonGroup';
-import RadioButtonIOS from './RadioButtonIOS';
-import { handlePress, isChecked } from './utils';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp, MD3TypescaleKey } from '../../types';
+import { handlePress } from './utils';
 import TouchableRipple from '../TouchableRipple/TouchableRipple';
+import RadioButton from './RadioButton';
 import Text from '../Typography/Text';
+import RadioButtonAndroid from './RadioButtonAndroid';
+import RadioButtonIOS from './RadioButtonIOS';
 
 export type Props = {
   /**
@@ -35,7 +31,7 @@ export type Props = {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Accessibility label for the touchable. This is read by the screen reader when the user taps the touchable.
    */
@@ -49,10 +45,6 @@ export type Props = {
    */
   color?: string;
   /**
-   * Color of the ripple effect.
-   */
-  rippleColor?: ColorValue;
-  /**
    * Status of radio button.
    */
   status?: 'checked' | 'unchecked';
@@ -65,30 +57,9 @@ export type Props = {
    */
   labelStyle?: StyleProp<TextStyle>;
   /**
-   * @supported Available in v5.x with theme version 3
-   *
-   * Label text variant defines appropriate text styles for type role and its size.
-   * Available variants:
-   *
-   *  Display: `displayLarge`, `displayMedium`, `displaySmall`
-   *
-   *  Headline: `headlineLarge`, `headlineMedium`, `headlineSmall`
-   *
-   *  Title: `titleLarge`, `titleMedium`, `titleSmall`
-   *
-   *  Label:  `labelLarge`, `labelMedium`, `labelSmall`
-   *
-   *  Body: `bodyLarge`, `bodyMedium`, `bodySmall`
-   */
-  labelVariant?: keyof typeof MD3TypescaleKey;
-  /**
-   * Specifies the largest possible scale a label font can reach.
-   */
-  labelMaxFontSizeMultiplier?: number;
-  /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -106,6 +77,13 @@ export type Props = {
 
 /**
  * RadioButton.Item allows you to press the whole row (item) instead of only the RadioButton.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/radio-item.ios.png" />
+ *     <figcaption>Pressed</figcaption>
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -135,25 +113,14 @@ const RadioButtonItem = ({
   disabled,
   color,
   uncheckedColor,
-  rippleColor,
   status,
-  theme: themeOverrides,
-  accessibilityLabel = label,
+  theme: { colors },
+  accessibilityLabel,
   testID,
   mode,
   position = 'trailing',
-  labelVariant = 'bodyLarge',
-  labelMaxFontSizeMultiplier,
 }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const radioButtonProps = {
-    value,
-    disabled,
-    status,
-    color,
-    theme,
-    uncheckedColor,
-  };
+  const radioButtonProps = { value, disabled, status, color, uncheckedColor };
   const isLeading = position === 'leading';
   let radioButton: any;
 
@@ -165,58 +132,35 @@ const RadioButtonItem = ({
     radioButton = <RadioButton {...radioButtonProps} />;
   }
 
-  const textColor = theme.isV3 ? theme.colors.onSurface : theme.colors.text;
-  const disabledTextColor = theme.isV3
-    ? theme.colors.onSurfaceDisabled
-    : theme.colors.disabled;
-  const textAlign = isLeading ? 'right' : 'left';
-
-  const computedStyle = {
-    color: disabled ? disabledTextColor : textColor,
-    textAlign,
-  } as TextStyle;
-
   return (
     <RadioButtonContext.Consumer>
       {(context?: RadioButtonContextType) => {
-        const checked =
-          isChecked({
-            contextValue: context?.value,
-            status,
-            value,
-          }) === 'checked';
         return (
           <TouchableRipple
-            onPress={(event) =>
-              handlePress({
-                onPress: onPress,
-                onValueChange: context?.onValueChange,
-                value,
-                event,
-              })
+            onPress={
+              disabled
+                ? undefined
+                : () =>
+                    handlePress({
+                      onPress: onPress,
+                      onValueChange: context?.onValueChange,
+                      value,
+                    })
             }
             accessibilityLabel={accessibilityLabel}
-            accessibilityRole="radio"
-            accessibilityState={{
-              checked,
-              disabled,
-            }}
             testID={testID}
-            disabled={disabled}
-            theme={theme}
-            rippleColor={rippleColor}
           >
             <View style={[styles.container, style]} pointerEvents="none">
               {isLeading && radioButton}
               <Text
-                variant={labelVariant}
                 style={[
                   styles.label,
-                  !theme.isV3 && styles.font,
-                  computedStyle,
+                  {
+                    color: colors.text,
+                    textAlign: isLeading ? 'right' : 'left',
+                  },
                   labelStyle,
                 ]}
-                maxFontSizeMultiplier={labelMaxFontSizeMultiplier}
               >
                 {label}
               </Text>
@@ -231,10 +175,12 @@ const RadioButtonItem = ({
 
 RadioButtonItem.displayName = 'RadioButton.Item';
 
-export default RadioButtonItem;
+export default withTheme(RadioButtonItem);
 
 // @component-docs ignore-next-line
-export { RadioButtonItem };
+const RadioButtonItemWithTheme = withTheme(RadioButtonItem);
+// @component-docs ignore-next-line
+export { RadioButtonItemWithTheme as RadioButtonItem };
 
 const styles = StyleSheet.create({
   container: {
@@ -245,10 +191,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   label: {
+    fontSize: 16,
     flexShrink: 1,
     flexGrow: 1,
-  },
-  font: {
-    fontSize: 16,
   },
 });

@@ -1,11 +1,9 @@
 import * as React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-
-import { useInternalTheme } from '../../core/theming';
-import { white } from '../../styles/themes/v2/colors';
-import type { ThemeProp } from '../../types';
-import getContrastingColor from '../../utils/getContrastingColor';
+import { View, ViewStyle, StyleSheet, StyleProp } from 'react-native';
 import Icon, { IconSource } from '../Icon';
+import { withTheme } from '../../core/theming';
+import { white } from '../../styles/colors';
+import getContrastingColor from '../../utils/getContrastingColor';
 
 const defaultSize = 64;
 
@@ -26,11 +24,17 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
 };
 
 /**
  * Avatars can be used to represent people in a graphical way.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img class="medium" src="screenshots/avatar-icon.png" />
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -42,15 +46,8 @@ export type Props = React.ComponentPropsWithRef<typeof View> & {
  * );
  * ```
  */
-const Avatar = ({
-  icon,
-  size = defaultSize,
-  style,
-  theme: themeOverrides,
-  ...rest
-}: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-  const { backgroundColor = theme.colors?.primary, ...restStyle } =
+const Avatar = ({ icon, size = defaultSize, style, theme, ...rest }: Props) => {
+  const { backgroundColor = theme.colors.primary, ...restStyle } =
     StyleSheet.flatten(style) || {};
   const textColor =
     rest.color ??
@@ -84,4 +81,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Avatar;
+export default withTheme(Avatar);

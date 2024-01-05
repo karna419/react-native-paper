@@ -1,10 +1,8 @@
 import * as React from 'react';
-import { GestureResponderEvent, Platform } from 'react-native';
-
+import { Platform } from 'react-native';
 import RadioButtonAndroid from './RadioButtonAndroid';
 import RadioButtonIOS from './RadioButtonIOS';
-import { useInternalTheme } from '../../core/theming';
-import type { ThemeProp } from '../../types';
+import { withTheme } from '../../core/theming';
 
 export type Props = {
   /**
@@ -22,7 +20,7 @@ export type Props = {
   /**
    * Function to execute on press.
    */
-  onPress?: (e: GestureResponderEvent) => void;
+  onPress?: () => void;
   /**
    * Custom color for unchecked radio.
    */
@@ -34,7 +32,7 @@ export type Props = {
   /**
    * @optional
    */
-  theme?: ThemeProp;
+  theme: ReactNativePaper.Theme;
   /**
    * testID to be used on tests.
    */
@@ -43,6 +41,25 @@ export type Props = {
 
 /**
  * Radio buttons allow the selection a single option from a set.
+ *
+ * <div class="screenshots">
+ *   <figure>
+ *     <img src="screenshots/radio-enabled.android.png" />
+ *     <figcaption>Android (enabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/radio-disabled.android.png" />
+ *     <figcaption>Android (disabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/radio-enabled.ios.png" />
+ *     <figcaption>iOS (enabled)</figcaption>
+ *   </figure>
+ *   <figure>
+ *     <img src="screenshots/radio-disabled.ios.png" />
+ *     <figcaption>iOS (disabled)</figcaption>
+ *   </figure>
+ * </div>
  *
  * ## Usage
  * ```js
@@ -72,15 +89,18 @@ export type Props = {
  * export default MyComponent;
  * ```
  */
-const RadioButton = ({ theme: themeOverrides, ...props }: Props) => {
-  const theme = useInternalTheme(themeOverrides);
-
+const RadioButton = (props: Props) => {
   const Button = Platform.select({
     default: RadioButtonAndroid,
     ios: RadioButtonIOS,
   });
 
-  return <Button {...props} theme={theme} />;
+  return <Button {...props} />;
 };
 
-export default RadioButton;
+export default withTheme(RadioButton);
+
+// @component-docs ignore-next-line
+const RadioButtonWithTheme = withTheme(RadioButton);
+// @component-docs ignore-next-line
+export { RadioButtonWithTheme as RadioButton };
